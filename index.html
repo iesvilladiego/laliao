@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#1e3a5f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -127,6 +127,19 @@ a{color:var(--c-primary);text-decoration:none}
 textarea.form-control{resize:vertical;min-height:80px}
 select.form-control{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2352606d'><path d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 8px center;background-size:20px;padding-right:34px}
 input[type="date"].form-control,input[type="time"].form-control{min-height:44px}
+/* ===== Campos de contraseña (cambio de contraseña) ===== */
+.pw-wrap{position:relative}
+.pw-wrap .form-control{padding-right:46px}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:var(--c-text-muted);border-radius:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pw-eye:hover{color:var(--c-primary)}
+.pw-eye:active{transform:translateY(-50%) scale(.94)}
+.pw-eye svg{width:19px;height:19px;pointer-events:none}
+.pw-strength{display:flex;align-items:center;gap:8px;margin-top:8px}
+.pw-strength .bars{display:flex;gap:4px;flex:1;min-width:70px}
+.pw-strength .bars i{height:5px;flex:1;border-radius:3px;background:var(--c-border);transition:background .2s}
+.pw-strength .lbl{font-size:11.5px;color:var(--c-text-muted);min-width:80px;text-align:right;font-weight:500}
+.pw-error{background:var(--c-danger-bg);border:1px solid #f0c8c4;color:var(--c-danger);border-radius:var(--radius-md);padding:10px 12px;font-size:13px;margin-top:6px;line-height:1.5;display:flex;gap:8px;align-items:flex-start}
+.pw-error svg{width:16px;height:16px;flex-shrink:0;margin-top:2px}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
   padding:11px 18px;
@@ -337,8 +350,8 @@ input[type="date"].form-control,input[type="time"].form-control{min-height:44px}
   .parte-tag{font-size:10px;padding:2px 7px}
   /* Toolbar más compacta */
   .toolbar{gap:6px;margin-bottom:10px}
-  .toolbar .search input{padding:8px 10px 8px 32px;font-size:15px}
-  .toolbar select{padding:8px 26px 8px 10px;font-size:15px}
+  .toolbar .search input{padding:8px 10px 8px 32px;font-size:16px}
+  .toolbar select{padding:8px 26px 8px 10px;font-size:16px}
   /* Stats más compactas */
   .stat-card{padding:12px}
   .stat-card .stat-value{font-size:22px}
@@ -417,6 +430,59 @@ input[type="date"].form-control,input[type="time"].form-control{min-height:44px}
 @media all and (display-mode:fullscreen){
   .app-header{padding-top:calc(8px + env(safe-area-inset-top, 0px))}
 }
+
+/* ===== Iconos SVG inline (multiplataforma: mismo render en Android/iOS/escritorio) ===== */
+.ic{width:1.1em;height:1.1em;min-width:1.1em;vertical-align:-.2em;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== Responsividad multiplataforma (móvil/tablet) ===== */
+/* Alturas dinámicas: la barra de direcciones de Android/iOS deja de comerse el fondo.
+   (Las reglas vh originales quedan antes: los navegadores sin dvh usan el fallback) */
+#app{min-height:100dvh}
+.modal{max-height:92dvh}
+/* El aside lateral es de ESCRITORIO: en móvil/tablet no debe pintarse ni
+   ocupar sitio (bug histórico: empujaba todo el contenido una pantalla
+   hacia abajo y mostraba sus botones sin estilo) */
+@media(max-width:899.98px){
+  .sidebar{display:none}
+}
+@media(min-width:900px){
+  .sidebar{height:100dvh}
+}
+/* Los botones nunca pueden ser más anchos que su contenedor */
+.btn{max-width:100%}
+/* SVG dentro de botones: tamaño fijo (sin dimensiones explícitas el menú
+   "Más opciones" renderizaba sus iconos a 144px y descuadraba el layout) */
+.btn > svg:not(.ic){width:22px;height:22px;flex-shrink:0}
+/* Bottom-nav: respeta notch/esquinas redondeadas laterales (landscape) */
+.bottom-nav{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+/* Mejor respuesta táctil en listas y controles (sin retardo de doble-tap) */
+.bottom-nav button,.parte-card,.checkbox-row,.group-chip,.alumno-row,.notif-item,.conducta-option,.multi-option,.chip{touch-action:manipulation}
+@media(max-width:520px){
+  /* El texto de los botones puede envolver (antes: recortado por nowrap) */
+  .btn{white-space:normal}
+  /* Footer de modales: botones apilados a ancho completo (antes se recortaban) */
+  .modal-footer{flex-direction:column;align-items:stretch}
+  .modal-footer .btn{flex:1 1 100%}
+  /* Tablas algo más compactas */
+  table{min-width:400px}
+}
+/* Tablet (600-899px): la sección de informes aprovecha el ancho en 2 columnas */
+@media(min-width:600px) and (max-width:899px){
+  #infResultados{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #infResultados > .card{margin-bottom:0}
+  #infResultados > .card-wide{grid-column:1/-1}
+}
+/* Móvil/tablet en landscape (poco alto): chrome compacto */
+@media(max-height:430px) and (max-width:1000px){
+  .bottom-nav button{min-height:44px;padding:3px 4px;gap:1px}
+  .app-header{padding-top:calc(4px + var(--safe-top));padding-bottom:4px}
+  .app-main{padding-bottom:calc(66px + var(--safe-bottom))}
+  .fab{bottom:calc(54px + var(--safe-bottom) + 10px)}
+  .modal{max-height:96dvh}
+  #toast{bottom:calc(58px + var(--safe-bottom))}
+}
+/* Accesibilidad: respetar la preferencia de menos animaciones */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* ===== Print (para PDFs) ===== */
 @media print{
@@ -679,7 +745,7 @@ tbody tr:hover{background:#fafbfc}
     <!-- Panel de bootstrap: aparece solo si NO existe ningún administrador todavía -->
     <div id="bootstrapPanel" class="hidden" style="margin-top:18px;padding-top:18px;border-top:2px dashed var(--c-accent)">
       <div style="background:linear-gradient(135deg,#fdf3d8,#fef9e7);border:1.5px solid var(--c-accent);border-radius:var(--radius-md);padding:14px;margin-bottom:14px">
-        <div style="font-weight:700;color:var(--c-accent-dark);font-size:14px;margin-bottom:6px">⚠️ Configuración inicial del centro</div>
+        <div style="font-weight:700;color:var(--c-accent-dark);font-size:14px;margin-bottom:6px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Configuración inicial del centro</div>
         <p style="font-size:12.5px;color:var(--c-text-soft);line-height:1.5;margin:0">No existe ningún administrador todavía. Crea la <strong>primera cuenta de administrador</strong> para poder gestionar el resto de usuarios del centro. Una vez creado, este formulario desaparecerá automáticamente.</p>
       </div>
       <div class="form-group">
@@ -783,7 +849,8 @@ tbody tr:hover{background:#fafbfc}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, onAuthStateChanged, updateProfile
+  signOut, onAuthStateChanged, updateProfile, updatePassword,
+  reauthenticateWithCredential, EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getDatabase, ref, set, push, update, remove, get, query, orderByChild,
@@ -1166,7 +1233,7 @@ onAuthStateChanged(auth, async (user) => {
       // If the profile read fails (e.g. permission denied), sign out and show clear error
       let msg = 'No se pudo cargar tu perfil. ';
       if((e.message||'').includes('Permission denied') || e.code === 'PERMISSION_DENIED'){
-        msg = '❌ Permiso denegado al leer tu perfil. Configura las reglas del Realtime Database para permitir lectura a usuarios autenticados: {"rules":{"convivencia_iesvdv":{".read":"auth!=null",".write":"auth!=null"}}}';
+        msg = 'Permiso denegado al leer tu perfil. Configura las reglas del Realtime Database para permitir lectura a usuarios autenticados: {"rules":{"convivencia_iesvdv":{".read":"auth!=null",".write":"auth!=null"}}}';
       } else {
         msg += e.message;
       }
@@ -1295,9 +1362,9 @@ function showProfileSelect(availableRoles){
   $('psNombre').textContent = currentUser.nombre || currentUser.username || 'Usuario';
   // Construir botones de roles
   const roleConfig = {
-    admin:    { label:'Administrador', desc:'Gestión completa: usuarios, alumnado, configuración y todos los partes', icon:'⚙️', color:'#c9a227' },
-    tutor:    { label:'Tutor',         desc:'Ver partes de tu tutoría, añadir/eliminar alumnos de tu grupo', icon:'👥', color:'#1c6fb8' },
-    profesor: { label:'Profesor',      desc:'Crear partes de incidencias y gestionar los propios', icon:'📝', color:'#2e7d4f' }
+    admin:    { label:'Administrador', desc:'Gestión completa: usuarios, alumnado, configuración y todos los partes', icon:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>', color:'#c9a227' },
+    tutor:    { label:'Tutor',         desc:'Ver partes de tu tutoría, añadir/eliminar alumnos de tu grupo', icon:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', color:'#1c6fb8' },
+    profesor: { label:'Profesor',      desc:'Crear partes de incidencias y gestionar los propios', icon:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>', color:'#2e7d4f' }
   };
   // Detectar si el tutor real no tiene grupo asignado (necesitará elegir uno)
   const tutorNeedsGroup = (r) => r === 'tutor' && (currentUser.role === 'admin' || !currentUser.tutoriaGrupo);
@@ -1310,7 +1377,7 @@ function showProfileSelect(availableRoles){
         <div style="flex:1">
           <div style="font-weight:600;font-size:15px;color:var(--c-text)">${cfg.label}</div>
           <div style="font-size:12px;color:var(--c-text-muted);line-height:1.4;margin-top:3px">${cfg.desc}</div>
-          ${needGroup ? '<div style="font-size:11px;color:var(--c-warning);margin-top:4px;font-weight:500">⚠️ Se te pedirá que elijas un grupo de tutoría</div>' : ''}
+          ${needGroup ? '<div style="font-size:11px;color:var(--c-warning);margin-top:4px;font-weight:500"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Se te pedirá que elijas un grupo de tutoría</div>' : ''}
         </div>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-muted)" stroke-width="2" style="flex-shrink:0;margin-top:8px"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
@@ -1689,8 +1756,8 @@ window.doLogin = async () => {
       }
     }
     else if(e.code === 'auth/too-many-requests') msg = 'Demasiados intentos fallidos. Espera unos minutos.';
-    else if(e.code === 'auth/operation-not-allowed') msg = '❌ El inicio de sesión Email/Password está deshabilitado en Firebase. Entra en Firebase Console → Authentication → Sign-in method → Email/Password → Habilitar.';
-    else if(e.code === 'auth/network-request-failed') msg = '❌ Sin conexión a Firebase. Verifica tu red o que la configuración del proyecto sea correcta.';
+    else if(e.code === 'auth/operation-not-allowed') msg = 'El inicio de sesión Email/Password está deshabilitado en Firebase. Entra en Firebase Console → Authentication → Sign-in method → Email/Password → Habilitar.';
+    else if(e.code === 'auth/network-request-failed') msg = 'Sin conexión a Firebase. Verifica tu red o que la configuración del proyecto sea correcta.';
     showLoginError(msg);
     if(btn && btn.tagName === 'BUTTON'){ btn.disabled = false; btn.textContent = 'Entrar'; }
   }
@@ -1828,9 +1895,9 @@ window.doBootstrapAdmin = async () => {
       }
     }
     else if(e.code === 'auth/weak-password') msg = 'Contraseña demasiado débil (mínimo 6 caracteres)';
-    else if(e.code === 'auth/operation-not-allowed') msg = '❌ El método Email/Password está deshabilitado en Firebase. Entra en Firebase Console → Authentication → Sign-in method y habilítalo.';
-    else if(e.code === 'auth/network-request-failed') msg = '❌ Sin conexión. Verifica tu red.';
-    else if(e.code === 'PERMISSION_DENIED' || (e.message||'').includes('Permission denied')) msg = '❌ Permiso denegado. Para crear el primer administrador, las reglas del Realtime Database deben permitir lectura pública del nodo convivencia_iesvdv/users temporalmente. Consulta las instrucciones.';
+    else if(e.code === 'auth/operation-not-allowed') msg = 'El método Email/Password está deshabilitado en Firebase. Entra en Firebase Console → Authentication → Sign-in method y habilítalo.';
+    else if(e.code === 'auth/network-request-failed') msg = 'Sin conexión. Verifica tu red.';
+    else if(e.code === 'PERMISSION_DENIED' || (e.message||'').includes('Permission denied')) msg = 'Permiso denegado. Para crear el primer administrador, las reglas del Realtime Database deben permitir lectura pública del nodo convivencia_iesvdv/users temporalmente. Consulta las instrucciones.';
     showLoginError(msg);
     if(btn){ btn.disabled = false; btn.textContent = 'Crear administrador inicial'; }
   }
@@ -1887,7 +1954,13 @@ function buildNav(){
         <div style="font-size:11px;opacity:.7;text-transform:capitalize">${escapeHtml(selectedRole && selectedRole !== currentUser.role ? selectedRole+' (rol elegido)' : (currentUser.role||''))}</div>
       </div>
     </div>
-    <button onclick="doLogout()" style="width:100%;padding:8px;background:rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:12px;font-weight:500">Cerrar sesión</button>
+    <div style="display:flex;gap:6px">
+      <button onclick="abrirCambiarPassword()" title="Cambiar mi contraseña" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;background:rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:12px;font-weight:500;min-width:0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Cambiar clave</span>
+      </button>
+      <button onclick="doLogout()" style="flex:1;padding:8px 6px;background:rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:12px;font-weight:500">Cerrar sesión</button>
+    </div>
   `;
   // Bottom nav (mobile)
   const mainNavIds = ['dashboard','nuevoParte','misPartes','alumnado'];
@@ -2104,13 +2177,38 @@ window.openModal = (title, body, footer='', size='') => {
   $('modalFooter').innerHTML = footer;
   $('modal').classList.toggle('lg', size === 'lg');
   $('modalOverlay').classList.add('show');
+  /* Bloquear el scroll del fondo mientras el modal está abierto (Android/escritorio) */
+  window.__modalOpenCount = (window.__modalOpenCount||0) + 1;
+  document.body.style.overflow = 'hidden';
 };
 window.closeModal = () => {
   $('modalOverlay').classList.remove('show');
   $('modalTitle').innerHTML = '';
   $('modalBody').innerHTML = '';
   $('modalFooter').innerHTML = '';
+  /* Restaurar el scroll del fondo cuando no queden modales abiertos */
+  window.__modalOpenCount = Math.max(0, (window.__modalOpenCount||0) - 1);
+  if(!window.__modalOpenCount) document.body.style.overflow = '';
 };
+
+/* Teclado virtual (Android/iOS): complementa interactive-widget=resizes-content.
+   Si el campo enfocado queda oculto tras abrir el teclado, se lleva a la vista. */
+(function(){
+  if(!window.visualViewport) return;
+  var vv = window.visualViewport;
+  var ensureVisible = function(){
+    var el = document.activeElement;
+    if(!el || !/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+    var r = el.getBoundingClientRect();
+    if(r.top < 4 || r.bottom > vv.height - 4){
+      try{ el.scrollIntoView({block:'nearest'}); }catch(e){}
+    }
+  };
+  vv.addEventListener('resize', function(){ setTimeout(ensureVisible, 60); });
+  document.addEventListener('focusin', function(e){
+    if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) setTimeout(ensureVisible, 350);
+  });
+})();
 
 /* ===== Dashboard ===== */
 function renderDashboard(c){
@@ -2148,18 +2246,18 @@ function renderDashboard(c){
     const otros = Object.keys(cursosDisponibles).sort((a,b) => b.localeCompare(a));
     avisoCurso = `
     <div class="card" style="border-left:4px solid #e8a93c;background:linear-gradient(135deg,#fdf3d8,#fef9e7);margin-bottom:16px">
-      <div style="font-weight:600">⚠️ No hay ningún parte en el curso activo (${escapeHtml(cursoAhora)})</div>
+      <div style="font-weight:600"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> No hay ningún parte en el curso activo (${escapeHtml(cursoAhora)})</div>
       <div style="font-size:13px;color:var(--c-text-soft);margin-top:4px">Hay ${baseRol.length} parte(s) archivados en: ${otros.map(cc => `<strong>${escapeHtml(cc)}</strong> (${cursosDisponibles[cc]})`).join(' · ')}. Los datos de cada año están aislados: los cursos vencidos no se pueden consultar. ${isRealAdmin() ? 'Si acaba de empezar un curso escolar nuevo, créalo y actívalo en la gestión de cursos; si hay partes que pertenecen a este curso, reasignalos desde el diagnóstico de la vista de informes.' : 'Avisa a la administración del centro para que active el curso correcto o reasigne los partes que correspondan a este curso.'}</div>
       <div class="flex gap-8 flex-wrap" style="margin-top:10px">
-        ${isRealAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="navigate('informes')">🩺 Diagnóstico de datos</button><button class="btn btn-primary btn-sm" onclick="navigate('cursos')">⚙️ Gestionar cursos</button>` : ''}
+        ${isRealAdmin() ? `<button class="btn btn-secondary btn-sm" onclick="navigate('informes')"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Diagnóstico de datos</button><button class="btn btn-primary btn-sm" onclick="navigate('cursos')"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Gestionar cursos</button>` : ''}
       </div>
     </div>`;
   } else if(isRealAdmin() && cachedCursoActivo && getCurrentCursoByDate() !== cachedCursoActivo){
     avisoCurso = `
     <div class="card" style="border-left:4px solid #e8a93c;background:linear-gradient(135deg,#fdf3d8,#fef9e7);margin-bottom:16px">
-      <div style="font-weight:600">⚠️ El curso activo configurado (${escapeHtml(cursoAhora)}) no coincide con el de la fecha actual (${escapeHtml(getCurrentCursoByDate())})</div>
+      <div style="font-weight:600"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> El curso activo configurado (${escapeHtml(cursoAhora)}) no coincide con el de la fecha actual (${escapeHtml(getCurrentCursoByDate())})</div>
       <div style="font-size:13px;color:var(--c-text-soft);margin-top:4px">Los partes nuevos se están guardando en <strong>${escapeHtml(cursoAhora)}</strong>. Si el curso ${escapeHtml(getCurrentCursoByDate())} ya ha empezado, créalo y actívalo en la gestión de cursos para que todo quede bien archivado.</div>
-      <div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="navigate('cursos')">⚙️ Gestionar cursos</button></div>
+      <div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="navigate('cursos')"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Gestionar cursos</button></div>
     </div>`;
   }
 
@@ -2271,7 +2369,7 @@ function renderNuevoParte(c){
       <div class="card-title">Datos del parte</div>
       <div class="form-group">
         <label>Alumnado <span class="required">*</span></label>
-        ${alumnosAnyo.length === 0 ? `<div class="form-hint text-warning">⚠ ${cachedStudents.length === 0 ? 'No hay alumnado importado. Pide al administrador que importe el listado desde Séneca.' : `No hay alumnado del curso activo (${escapeHtml(cursoActivoActual())}): el registrado pertenece a cursos anteriores, ya archivados. ${isRealAdmin() ? 'Impórtalo desde la sección de Alumnado.' : 'Pide al administrador que importe el listado de este curso desde Séneca.'}`}</div>` : `
+        ${alumnosAnyo.length === 0 ? `<div class="form-hint text-warning"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${cachedStudents.length === 0 ? 'No hay alumnado importado. Pide al administrador que importe el listado desde Séneca.' : `No hay alumnado del curso activo (${escapeHtml(cursoActivoActual())}): el registrado pertenece a cursos anteriores, ya archivados. ${isRealAdmin() ? 'Impórtalo desde la sección de Alumnado.' : 'Pide al administrador que importe el listado de este curso desde Séneca.'}`}</div>` : `
         <div class="group-chips" id="npGroupChips">
           <div class="group-chip all active" onclick="filterAlumnoSelect('')">Todos</div>
           ${grupos.map(g => `<div class="group-chip" onclick="filterAlumnoSelect('${escapeHtml(g).replace(/'/g,"\\'")}')">${escapeHtml(g)}</div>`).join('')}
@@ -2442,7 +2540,7 @@ window.actualizarPreviewUbicacion = () => {
       preview.style.background = 'var(--c-info-bg)';
       preview.style.color = 'var(--c-info)';
     } else {
-      preview.textContent = '⚠️ Selecciona un alumno para resolver el grupo';
+      preview.textContent = 'Selecciona un alumno para resolver el grupo';
       preview.style.display = 'inline-flex';
       preview.style.background = 'var(--c-warning-bg)';
       preview.style.color = 'var(--c-warning)';
@@ -2803,7 +2901,7 @@ function renderGestionTutorias(c){
       </div>
 
       <div class="card" style="background:#f7f9fc;font-size:13px;color:var(--c-text-muted);line-height:1.5">
-        <strong style="color:var(--c-text-soft)">ℹ️ Información</strong><br>
+        <strong style="color:var(--c-text-soft)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Información</strong><br>
         • Pueden ser asignados a una tutoría los usuarios con rol <strong>tutor</strong> (sin otro grupo) o <strong>administradores</strong> (asignación temporal).<br>
         • Un usuario solo puede ser tutor de <strong>un grupo a la vez</strong>. Si lo asignas a otro, dejará de ser tutor del anterior.<br>
         • Los administradores conservan su rol real; la asignación como tutor no cambia su rol en la base de datos.<br>
@@ -2945,7 +3043,7 @@ window.filterTut = () => {
  * "Todos los partes" (búsqueda + filtros de tipo/grupo/estado, listado
  * completo y su exportación a PDF) vive ahora dentro de la sección
  * única "Informes": el panel de filtros incluye esos filtros, y el
- * listado con su botón de descarga es la tarjeta "📋 Todos los
+ * listado con su botón de descarga es la tarjeta "<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Todos los
  * partes". Ver generarPDFTodosPartes() en la sección de informes. */
 
 /* ===== Detalle del Parte ===== */
@@ -3042,7 +3140,7 @@ window.openParteDetail = (parteId) => {
       ${p.notificadoTutor ? `
         <div class="detail-row"><span class="label">Momento</span><span class="value">${fmtFechaHora(p.momentoNotificacionTutor)}</span></div>
         <div class="detail-row"><span class="label">Tutor notificado</span><span class="value">${escapeHtml(p.tutorNotificadoNombre||'—')}</span></div>
-        <div class="detail-row"><span class="label">Visto por el tutor</span><span class="value">${p.vistoPorTutor ? '<span class="text-success">✓ Sí</span>' : '<span class="text-warning">⚠️ Pendiente</span>'}</span></div>
+        <div class="detail-row"><span class="label">Visto por el tutor</span><span class="value">${p.vistoPorTutor ? '<span class="text-success">✓ Sí</span>' : '<span class="text-warning"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Pendiente</span>'}</span></div>
         ${p.vistoPorTutor && p.vistoPorTutorFecha ? `<div class="detail-row"><span class="label">Visto el</span><span class="value">${fmtFechaHora(p.vistoPorTutorFecha)}</span></div>` : ''}
       ` : (tutorOfGroup ? `<div class="detail-row"><span class="label">Tutor del grupo</span><span class="value">${escapeHtml(tutorOfGroup.nombre||'')}</span></div>` : '<div class="detail-row"><span class="label">Tutor del grupo</span><span class="value text-warning">Sin tutor asignado</span></div>')}
     </div>
@@ -3067,7 +3165,7 @@ window.openParteDetail = (parteId) => {
   if(canNotifyTutor) footer += `<button class="btn btn-info btn-sm" style="background:var(--c-info);color:#fff" onclick="notificarTutor('${p.id}')">Notificar al tutor</button>`;
   if(canClose) footer += `<button class="btn btn-success btn-sm" onclick="cerrarParte('${p.id}')">Cerrar parte</button>`;
   if(canDelete) footer += `<button class="btn btn-danger btn-sm" onclick="eliminarParte('${p.id}')">Eliminar</button>`;
-  footer += `<button class="btn btn-accent btn-sm" onclick="generarPDFParteDesdeDetalle('${p.id}')">📄 Generar comunicación iPasen</button>`;
+  footer += `<button class="btn btn-accent btn-sm" onclick="generarPDFParteDesdeDetalle('${p.id}')"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Generar comunicación iPasen</button>`;
 
   openModal(`Parte ${p.conductaId} — ${escapeHtml(p.alumnoNombre)}`, body, footer);
 };
@@ -3448,14 +3546,14 @@ function renderAlumnado(c){
 
     ${(cachedStudents.length > 0 && visibleStudents.length === 0) ? `
     <div class="card" style="border-left:4px solid #e8a93c;background:linear-gradient(135deg,#fdf3d8,#fef9e7);margin-bottom:16px">
-      <div style="font-weight:600">⚠️ No hay alumnado del curso activo (${escapeHtml(cursoActivoActual())})</div>
+      <div style="font-weight:600"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> No hay alumnado del curso activo (${escapeHtml(cursoActivoActual())})</div>
       <div style="font-size:13px;color:var(--c-text-soft);margin-top:4px">El alumnado registrado pertenece a cursos anteriores, que están archivados y no se pueden consultar. ${canImport ? `Importa el alumnado del curso activo desde Séneca (más abajo) para poder trabajar este curso.` : 'Avisa a la administración para que importe el alumnado de este curso desde Séneca.'}</div>
     </div>` : ''}
 
     ${actingAsTutor ? `
     <div class="card" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4);border-color:var(--c-success)">
       <div class="card-title">
-        <span>➕ Añadir alumno/a a mi tutoría (${escapeHtml(effTutoriaGrupo||'')})</span>
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir alumno/a a mi tutoría (${escapeHtml(effTutoriaGrupo||'')})</span>
       </div>
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Como tutor/a del grupo <strong>${escapeHtml(effTutoriaGrupo||'')}</strong>, puedes dar de alta a nuevos alumnos/as (incorporaciones) o eliminar a los que causan baja. Solo puedes modificar el alumnado de tu grupo.</p>
       <div class="form-row">
@@ -3475,7 +3573,7 @@ function renderAlumnado(c){
     ${canDeleteGroups && grupos.length > 0 ? `
     <div class="card" style="background:#fdf3d8;border-color:#e8c956">
       <div class="card-title">
-        <span>🗑️ Eliminar grupo completo</span>
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar grupo completo</span>
       </div>
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Pulsa un grupo para eliminar <strong>todo su alumnado del curso activo</strong>. Útil antes de reimportar un grupo actualizado desde Séneca. El alumnado de cursos anteriores está archivado y no se puede eliminar.</p>
       <div class="form-row" style="margin-bottom:10px">
@@ -3497,7 +3595,7 @@ function renderAlumnado(c){
     ${canImport ? `
     <div class="card" style="background:linear-gradient(135deg,#f0f6fc,#e0eef9);border-color:var(--c-info)">
       <div class="card-title">
-        <span>📥 Importar alumnado desde Séneca</span>
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> Importar alumnado desde Séneca</span>
       </div>
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Sube el archivo Excel (<code>.xls</code> o <code>.xlsx</code>) exportado desde Séneca. Se extraerá el grupo de cada pestaña. El alumnado existente en el mismo grupo y curso será actualizado.</p>
       <div class="form-group">
@@ -3572,7 +3670,7 @@ window.eliminarGrupoCompleto = async () => {
   // Also warn if any of these alumnos has open partes
   const partesAsociados = cachedPartes.filter(p => p.grupo === g && alumnosAfectados.some(a => a.id === p.alumnoId));
   const msg = `¿Eliminar ${alumnosAfectados.length} alumnos del grupo ${g}${cu?` (curso ${cu})`:''}?`
-    + (partesAsociados.length > 0 ? `\n\n⚠️ Estos alumnos tienen ${partesAsociados.length} partes asociados que NO se borrarán (quedarán huérfanos en el historial).` : '');
+    + (partesAsociados.length > 0 ? `\n\nAviso: estos alumnos tienen ${partesAsociados.length} partes asociados que NO se borrarán (quedarán huérfanos en el historial).` : '');
   if(!confirm(msg)) return;
   try{
     const updates = {};
@@ -3902,7 +4000,7 @@ function renderUsuarios(c){
           </div>
           <div class="form-group">
             <label>Usuario <span class="required">*</span></label>
-            <input type="text" id="nuUser" class="form-control" placeholder="ej: mfernandez" autocapitalize="none">
+            <input type="text" id="nuUser" class="form-control" placeholder="ej: jandluz123" autocapitalize="none">
             <div class="form-hint">3-20 caracteres: minúsculas, números o guion bajo.</div>
           </div>
         </div>
@@ -4021,7 +4119,7 @@ function renderUsersTable(){
       <td>
         <div class="flex gap-8">
           <button class="btn btn-sm btn-secondary" onclick="editarUsuario('${u.id}')" title="Editar">Editar</button>
-          <button class="btn btn-sm btn-ghost" onclick="resetPasswordUsuario('${u.id}')" title="Restablecer contraseña" ${isSelf?'disabled':''}>
+          <button class="btn btn-sm btn-ghost" onclick="resetPasswordUsuario('${u.id}')" title="${isSelf?'Cambiar mi contraseña':'Restablecer contraseña'}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5.882V19.24a1.76 1.76 0 0 1-3.417.592l-2.147-6.15M18 13a3 3 0 1 0 0-6M9 13l-3.417-1.758A1.76 1.76 0 0 1 9 5.882z"/></svg>
           </button>
           <button class="btn btn-sm btn-ghost" onclick="eliminarUsuario('${u.id}')" title="${isLastAdmin?'No se puede eliminar al último admin':'Eliminar'}" style="color:var(--c-danger)" ${isSelf||isLastAdmin?'disabled':''}>
@@ -4270,7 +4368,7 @@ window.editarUsuario = (uid) => {
         <option value="tutor" ${u.role==='tutor'?'selected':''}>Tutor</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Administrador</option>
       </select>
-      ${isLastAdmin ? '<div class="form-hint text-warning">⚠️ Es el único administrador. No se puede cambiar su rol.</div>' : ''}
+      ${isLastAdmin ? '<div class="form-hint text-warning"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Es el único administrador. No se puede cambiar su rol.</div>' : ''}
     </div>
     <div class="form-group" id="euTutoriaWrap" style="display:${u.role==='tutor'?'block':'none'}">
       <label>Grupo de tutoría <span class="required">*</span></label>
@@ -4337,11 +4435,14 @@ window.guardarEdicionUsuario = async (uid) => {
 window.resetPasswordUsuario = (uid) => {
   const u = cachedUsers[uid];
   if(!u) return;
-  if(uid === currentUserUid){ toast('No puedes restablecer tu propia contraseña desde aquí','error'); return; }
+  if(uid === currentUserUid){ abrirCambiarPassword(); return; }
   // Send password reset email to the synthetic email (won't work as it's not real)
   // Better: show a modal with instructions
   const body = `
-    <p style="margin-bottom:12px;font-size:13px;color:var(--c-text-soft)">Para restablecer la contraseña de <strong>@${escapeHtml(u.username||'')}</strong> tienes dos opciones:</p>
+    <p style="margin-bottom:10px;font-size:13px;color:var(--c-text-soft)">Para restablecer la contraseña de <strong>@${escapeHtml(u.username||'')}</strong> tienes dos opciones:</p>
+    <div style="background:var(--c-info-bg);border:1px solid #bcd6ec;border-left:4px solid var(--c-info);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;color:#17466f;line-height:1.5">
+      Recuerda: cada usuario puede <strong>cambiar su contraseña por sí mismo</strong> desde <strong>Perfil &rarr; Seguridad</strong>, sin necesidad de que el administrador intervenga.
+    </div>
     <div class="card" style="background:#f7f9fc;border-color:var(--c-border);margin-bottom:12px;padding:14px">
       <div class="fw-600 mb-8" style="color:var(--c-primary)">Opción A: Eliminar y recrear (recomendada)</div>
       <p style="font-size:12.5px;color:var(--c-text-soft);line-height:1.5">Elimina el usuario y vuelve a crearlo desde la sección "Crear nuevo usuario" con la nueva contraseña. Es la forma más sencilla.</p>
@@ -4387,7 +4488,7 @@ function renderConfiguracion(c){
 
     <div class="card">
       <div class="card-title">
-        <span>📍 Ubicaciones predefinidas</span>
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Ubicaciones predefinidas</span>
         <span class="chip">${ubicaciones.length} ubicaciones</span>
       </div>
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px;line-height:1.5">Estas son las ubicaciones que aparecerán como sugerencias al rellenar el campo "Ubicación de los hechos" en un parte. El profesorado podrá elegir una de la lista o escribir una propia. Los cambios se sincronizan en tiempo real con todos los dispositivos.</p>
@@ -4414,11 +4515,11 @@ function renderConfiguracion(c){
         <button class="btn btn-primary" onclick="guardarUbicaciones()">Guardar cambios</button>
         <button class="btn btn-secondary" onclick="restablecerUbicaciones()">Restablecer por defecto</button>
       </div>
-      <div class="form-hint" id="cambiosPendientes" style="margin-top:8px;display:none;color:var(--c-warning);font-weight:500">⚠️ Hay cambios sin guardar. Pulsa "Guardar cambios" para aplicarlos.</div>
+      <div class="form-hint" id="cambiosPendientes" style="margin-top:8px;display:none;color:var(--c-warning);font-weight:500"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay cambios sin guardar. Pulsa "Guardar cambios" para aplicarlos.</div>
     </div>
 
     <div class="card" style="background:#f7f9fc">
-      <div class="card-title">ℹ️ Información</div>
+      <div class="card-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Información</div>
       <div style="font-size:13px;color:var(--c-text-soft);line-height:1.6">
         <p style="margin-bottom:8px"><strong>Datos almacenados en:</strong> <code>convivencia_iesvdv/config/ubicaciones</code></p>
         <p style="margin-bottom:8px">Las ubicaciones se sincronizan en tiempo real con todos los dispositivos conectados. Cuando un profesor rellene un parte, verá estas sugerencias en el campo de ubicación.</p>
@@ -4534,7 +4635,7 @@ function renderCursos(c){
     <div class="page-subtitle">Curso activo: <strong style="color:var(--c-primary)">${escapeHtml(cursoActivo)}</strong></div>
 
     <div class="card" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4);border-color:var(--c-success)">
-      <div class="card-title"><span>📌 Curso activo</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg> Curso activo</span></div>
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:10px;line-height:1.5">El curso activo determina en qué curso escolar se registran los partes y las importaciones de alumnado. Todos los usuarios verán este curso en la aplicación.</p>
       <div class="form-group" style="margin:0">
         <select id="cursoActivoSel" class="form-control" style="max-width:300px">
@@ -4546,7 +4647,7 @@ function renderCursos(c){
 
     <div class="card">
       <div class="card-title">
-        <span>📅 Cursos disponibles (${cachedCursos.length})</span>
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Cursos disponibles (${cachedCursos.length})</span>
         <button class="btn btn-primary btn-sm" onclick="crearCursoModal()">+ Nuevo curso</button>
       </div>
       <div class="table-wrap">
@@ -4566,7 +4667,7 @@ function renderCursos(c){
                 <td>${esActivo ? '<span class="parte-tag tag-cerrado">Activo</span>' : '<span class="text-muted">—</span>'}</td>
                 <td>
                   <button class="btn btn-sm btn-secondary" onclick="editarCursoModal('${cur.id}')">Editar</button>
-                  <button class="btn btn-sm btn-ghost" disabled title="🔒 Ningún curso escolar se puede eliminar: los datos de cada año se conservan como histórico" style="opacity:.4">Eliminar</button>
+                  <button class="btn btn-sm btn-ghost" disabled title="Ningún curso escolar se puede eliminar: los datos de cada año se conservan como histórico" style="opacity:.4">Eliminar</button>
                 </td>
               </tr>`;
             }).join('')}
@@ -4576,10 +4677,10 @@ function renderCursos(c){
     </div>
 
     <div class="card" style="background:#f7f9fc;font-size:13px;color:var(--c-text-muted);line-height:1.5">
-      <strong style="color:var(--c-text-soft)">ℹ️ Información</strong><br>
+      <strong style="color:var(--c-text-soft)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Información</strong><br>
       • Un curso escolar va del <strong>1 de septiembre</strong> de un año al <strong>31 de agosto</strong> del año siguiente.<br>
-      • 🔒 <strong>Ningún curso se puede eliminar</strong> (ni el vigente ni los vencidos): los datos de cada año se conservan como histórico.<br>
-      • 🔒 Solo los datos del <strong>curso activo</strong> se pueden consultar; los cursos anteriores quedan archivados.<br>
+      • <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <strong>Ningún curso se puede eliminar</strong> (ni el vigente ni los vencidos): los datos de cada año se conservan como histórico.<br>
+      • <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Solo los datos del <strong>curso activo</strong> se pueden consultar; los cursos anteriores quedan archivados.<br>
       • Un curso con partes registrados ya no puede cambiar de año (para no romper el histórico).<br>
       • Al cambiar el curso activo, todos los usuarios lo verán reflejado inmediatamente en sus dispositivos.<br>
       • Los partes nuevos se asociarán al curso activo en el momento de su creación.
@@ -4661,7 +4762,7 @@ window.editarCursoModal = (cursoId) => {
   const anioActual = parseInt(cur.label.split('-')[0]);
   const esInicial = (cur.label === CURSO_INICIAL || cur.esInicial);
   const body = `
-    ${esInicial ? '<div class="form-hint text-warning" style="margin-bottom:10px">⚠️ Este es el curso inicial: no se puede eliminar ni cambiar su año.</div>' : ''}
+    ${esInicial ? '<div class="form-hint text-warning" style="margin-bottom:10px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Este es el curso inicial: no se puede eliminar ni cambiar su año.</div>' : ''}
     <p style="margin-bottom:12px;font-size:13px;color:var(--c-text-soft)">Modifica el <strong>año de inicio</strong> del curso. Las fechas se ajustarán automáticamente al 1 de septiembre y 31 de agosto.</p>
     <div class="form-group">
       <label>Año de inicio <span class="required">*</span></label>
@@ -4936,15 +5037,15 @@ function informesFiltrosHTML(scopeList, mostrarGrupoFiltro){
   const otros = cursosConPartes(scopeList).filter(([cc]) => cc !== activo);
   const otrosTotal = otros.reduce((acc, x) => acc + x[1], 0);
   const pista = (nActivos === 0 && otrosTotal > 0)
-    ? `<div style="margin-top:10px;padding:8px 12px;background:#fdf3d8;border:1px solid #e8c56c;border-radius:8px;font-size:13px">⚠️ No hay partes del curso activo <strong>${escapeHtml(activo)}</strong> en el ámbito de este perfil. Hay <strong>${otrosTotal}</strong> parte(s) en otros cursos (${otros.map(([cc,n]) => `${escapeHtml(cc)}: ${n}`).join(' · ')}), que están archivados y no se pueden consultar.${isRealAdmin() ? ' Si alguno pertenece en realidad a este curso, reasignalo en el diagnóstico de datos de esta misma página.' : ''}</div>`
+    ? `<div style="margin-top:10px;padding:8px 12px;background:#fdf3d8;border:1px solid #e8c56c;border-radius:8px;font-size:13px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> No hay partes del curso activo <strong>${escapeHtml(activo)}</strong> en el ámbito de este perfil. Hay <strong>${otrosTotal}</strong> parte(s) en otros cursos (${otros.map(([cc,n]) => `${escapeHtml(cc)}: ${n}`).join(' · ')}), que están archivados y no se pueden consultar.${isRealAdmin() ? ' Si alguno pertenece en realidad a este curso, reasignalo en el diagnóstico de datos de esta misma página.' : ''}</div>`
     : '';
   return `
     <div class="card">
-      <div class="card-title"><span>🗓️ Filtros del informe</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg> Filtros del informe</span></div>
       <div class="flex gap-8 flex-wrap" style="align-items:flex-end">
         <div class="form-group" style="margin-bottom:0;min-width:220px">
           <label style="font-size:12px;color:var(--c-text-muted)">Curso escolar</label>
-          <select id="infCurso" class="form-control" disabled title="🔒 Solo se pueden consultar los datos del curso activo. Los cursos anteriores están archivados.">
+          <select id="infCurso" class="form-control" disabled title="Solo se pueden consultar los datos del curso activo. Los cursos anteriores están archivados.">
             <option value="${escapeHtml(activo)}" selected>${escapeHtml(activo)} — ${nActivos} parte${nActivos === 1 ? '' : 's'} · curso activo</option>
           </select>
         </div>
@@ -4993,7 +5094,7 @@ function informesFiltrosHTML(scopeList, mostrarGrupoFiltro){
         </div>
         <button class="btn btn-ghost" onclick="resetInformesFiltro()">↺ Quitar filtros</button>
       </div>
-      <div id="infEstadoFiltros" style="font-size:12px;color:var(--c-text-muted);margin-top:8px">🔒 Datos aislados por año: solo se consulta el curso activo (<strong>${escapeHtml(activo)}</strong>). Filtros activos: <strong>${escapeHtml(informesFiltrosActivosTexto())}</strong></div>
+      <div id="infEstadoFiltros" style="font-size:12px;color:var(--c-text-muted);margin-top:8px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Datos aislados por año: solo se consulta el curso activo (<strong>${escapeHtml(activo)}</strong>). Filtros activos: <strong>${escapeHtml(informesFiltrosActivosTexto())}</strong></div>
       ${pista}
     </div>`;
 }
@@ -5162,7 +5263,7 @@ window.refrescarInformesResultados = () => {
   else { infAdminAlumnoSetup(); infAdminGrupoSetup(); infAdminProfesorSetup(); }
   restoreInformesSelects(snap);
   const st = $('infEstadoFiltros');
-  if(st) st.innerHTML = `🔒 Datos aislados por año: solo se consulta el curso activo (<strong>${escapeHtml(cursoActivoActual())}</strong>). Filtros activos: <strong>${escapeHtml(informesFiltrosActivosTexto())}</strong>`;
+  if(st) st.innerHTML = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Datos aislados por año: solo se consulta el curso activo (<strong>${escapeHtml(cursoActivoActual())}</strong>). Filtros activos: <strong>${escapeHtml(informesFiltrosActivosTexto())}</strong>`;
 };
 
 /* === Diagnóstico y reparación (solo admin) ===
@@ -5184,20 +5285,20 @@ function diagnosticoPartesHTML(){
   const activo = cursoActivoActual();
   return `
     <div class="card" style="border-color:#e8c56c">
-      <div class="card-title"><span>🩺 Diagnóstico de datos</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Diagnóstico de datos</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">Reparto de <strong>todos</strong> los partes de la base de datos por curso escolar, sin filtros. Los datos de cada año están aislados: solo el curso activo (${escapeHtml(activo)}) es consultable y ningún curso se puede eliminar. Si unos partes no se ven, casi siempre es porque están archivados en otro curso: si pertenecen a este curso, reasignalos con el botón de abajo.</p>
       <div style="overflow-x:auto">
       <table style="width:100%;font-size:13px;border-collapse:collapse">
         <thead><tr style="text-align:left;border-bottom:2px solid var(--c-border)"><th style="padding:6px 8px">Curso</th><th style="padding:6px 8px">Partes</th><th style="padding:6px 8px"></th></tr></thead>
         <tbody>
-          ${dist.map(([cc, n]) => `<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:6px 8px"><strong>${escapeHtml(cc)}</strong>${cc === activo ? ' <span style="font-size:11px;color:var(--c-primary)">(activo)</span>' : ''}</td><td style="padding:6px 8px">${n}</td><td style="padding:6px 8px">${cc === activo ? `<button class="btn btn-secondary btn-sm" onclick="__verInformesCurso('${escapeHtml(cc)}')">Ver informes</button>` : '<span style="font-size:12px;color:var(--c-text-muted)">🔒 Archivado — no consultable</span>'}</td></tr>`).join('')}
+          ${dist.map(([cc, n]) => `<tr style="border-bottom:1px solid var(--c-border)"><td style="padding:6px 8px"><strong>${escapeHtml(cc)}</strong>${cc === activo ? ' <span style="font-size:11px;color:var(--c-primary)">(activo)</span>' : ''}</td><td style="padding:6px 8px">${n}</td><td style="padding:6px 8px">${cc === activo ? `<button class="btn btn-secondary btn-sm" onclick="__verInformesCurso('${escapeHtml(cc)}')">Ver informes</button>` : '<span style="font-size:12px;color:var(--c-text-muted)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Archivado — no consultable</span>'}</td></tr>`).join('')}
         </tbody>
       </table>
       </div>
       ${inconsistentes.length > 0 ? `
       <div style="margin-top:12px;padding:10px 12px;background:#fdf3d8;border:1px solid #e8c56c;border-radius:8px;font-size:13px">
-        ⚠️ <strong>${inconsistentes.length}</strong> parte(s) tienen asignado un curso que no corresponde a la fecha del incidente (se guardaron antes de un cambio de curso activo, o se introdujeron a mano en la BD). Esto los hace invisibles en el curso al que pertenecen realmente.
-        <div style="margin-top:8px"><button class="btn btn-accent btn-sm" onclick="repararCursosPartes()">🛠️ Reasignar cada parte al curso de su fecha</button></div>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> <strong>${inconsistentes.length}</strong> parte(s) tienen asignado un curso que no corresponde a la fecha del incidente (se guardaron antes de un cambio de curso activo, o se introdujeron a mano en la BD). Esto los hace invisibles en el curso al que pertenecen realmente.
+        <div style="margin-top:8px"><button class="btn btn-accent btn-sm" onclick="repararCursosPartes()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Reasignar cada parte al curso de su fecha</button></div>
       </div>` : ''}
       ${sinFecha.length > 0 || sinCurso.length > 0 ? `
       <div style="margin-top:8px;font-size:12px;color:var(--c-text-muted)">
@@ -5371,18 +5472,18 @@ function informesResultadosProfesorHTML(scope){
 
   return `
     <div class="card">
-      <div class="card-title"><span>📊 Resumen general</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Resumen general</span></div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-value">${partesCurso.length}</div><div class="stat-label">Total partes</div></div>
         <div class="stat-card warning"><div class="stat-value">${partesCurso.filter(p=>p.estado!=='cerrado').length}</div><div class="stat-label">Abiertos</div></div>
         <div class="stat-card success"><div class="stat-value">${partesCurso.filter(p=>p.estado==='cerrado').length}</div><div class="stat-label">Cerrados</div></div>
         <div class="stat-card accent"><div class="stat-value">${partesCurso.filter(p=>p.tipo==='CGPC').length}</div><div class="stat-label">CGPC</div></div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorGeneral()">📄 Exportar resumen a PDF</button>
+      <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar resumen a PDF</button>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>👥 Por alumno</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Por alumno</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${partesCurso.length === 0 ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período de arriba.' : 'Selecciona un alumno para ver el detalle de sus partes y exportarlo a PDF.'}</p>
       <select id="infProfAlumno" class="form-control" style="max-width:400px;margin-bottom:10px">
         <option value="">${alumnosUnicos.length ? '— Selecciona alumno —' : '— Sin resultados —'}</option>
@@ -5395,7 +5496,7 @@ function informesResultadosProfesorHTML(scope){
     </div>
 
     <div class="card">
-      <div class="card-title"><span>🏫 Por grupo</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 1 0-4 0v4"/><path d="M18 5v17"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg> Por grupo</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${partesCurso.length === 0 ? 'No hay partes que coincidan con los filtros seleccionados.' : 'Selecciona un grupo para ver el detalle y exportarlo a PDF.'}</p>
       <select id="infProfGrupo" class="form-control" style="max-width:400px;margin-bottom:10px">
         <option value="">${gruposUnicos.length ? '— Selecciona grupo —' : '— Sin resultados —'}</option>
@@ -5408,7 +5509,7 @@ function informesResultadosProfesorHTML(scope){
     </div>
 
     <div class="card" style="background:linear-gradient(135deg,#fdf3d8,#fef9e7);border-color:var(--c-accent)">
-      <div class="card-title"><span>📋 Parte completo para iPasen</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Parte completo para iPasen</span></div>
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:10px;line-height:1.5">Genera un documento PDF con <strong>todos los datos</strong> del parte de incidencias, listo para enviar por la mensajería de iPasen. Selecciona un parte concreto o exporta todos a la vez en un único documento (un parte por página).</p>
       <div class="form-group" style="margin-bottom:10px">
         <select id="infProfParteCompleto" class="form-control" style="max-width:500px">
@@ -5420,8 +5521,8 @@ function informesResultadosProfesorHTML(scope){
         </select>
       </div>
       <div class="flex gap-8 flex-wrap">
-        <button class="btn btn-accent btn-sm" onclick="generarPDFProfesorParteCompleto()">📄 Exportar parte seleccionado a PDF</button>
-        <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorTodosPartesCompletos()">📄 Exportar TODOS a un único PDF</button>
+        <button class="btn btn-accent btn-sm" onclick="generarPDFProfesorParteCompleto()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar parte seleccionado a PDF</button>
+        <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorTodosPartesCompletos()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar TODOS a un único PDF</button>
       </div>
     </div>
   `;
@@ -5482,7 +5583,7 @@ window.infProfAlumnoChange = () => {
     .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
   div.innerHTML = `
     <div style="margin-bottom:8px"><strong>${partes.length} partes</strong> para ${escapeHtml(alumno)}</div>
-    <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorAlumno(document.getElementById('infProfAlumno').value)">📄 Exportar a PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorAlumno(document.getElementById('infProfAlumno').value)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar a PDF</button>
     <div style="margin-top:10px">${partes.map(p => renderParteCard(p)).join('')}</div>
   `;
 };
@@ -5534,7 +5635,7 @@ window.infProfGrupoChange = () => {
     .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
   div.innerHTML = `
     <div style="margin-bottom:8px"><strong>${partes.length} partes</strong> en el grupo ${escapeHtml(grupo)}</div>
-    <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorGrupo(document.getElementById('infProfGrupo').value)">📄 Exportar a PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorGrupo(document.getElementById('infProfGrupo').value)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar a PDF</button>
     <div style="margin-top:10px">${partes.map(p => renderParteCard(p)).join('')}</div>
   `;
 };
@@ -5715,18 +5816,18 @@ function informesResultadosTutorHTML(scope){
 
   return `
     <div class="card">
-      <div class="card-title"><span>📊 Estadística general de la tutoría</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Estadística general de la tutoría</span></div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-value">${partesTutoria.length}</div><div class="stat-label">Total partes</div></div>
         <div class="stat-card warning"><div class="stat-value">${partesTutoria.filter(p=>p.estado!=='cerrado').length}</div><div class="stat-label">Abiertos</div></div>
         <div class="stat-card success"><div class="stat-value">${partesTutoria.filter(p=>p.estado==='cerrado').length}</div><div class="stat-label">Cerrados</div></div>
         <div class="stat-card accent"><div class="stat-value">${alumnosUnicos.length}</div><div class="stat-label">Alumnos con partes</div></div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="generarPDFTutorGeneral()">📄 Exportar informe general a PDF</button>
+      <button class="btn btn-primary btn-sm" onclick="generarPDFTutorGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar informe general a PDF</button>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>👤 Informe por alumno (orden cronológico inverso)</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Informe por alumno (orden cronológico inverso)</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${partesTutoria.length === 0 ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período de arriba.' : 'Selecciona un alumno para ver todos sus partes y exportarlos a PDF.'}</p>
       <select id="infTutorAlumno" class="form-control" style="max-width:400px;margin-bottom:10px">
         <option value="">${alumnosUnicos.length ? '— Selecciona alumno —' : '— Sin resultados —'}</option>
@@ -5805,7 +5906,7 @@ window.infTutorAlumnoChange = () => {
     .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
   div.innerHTML = `
     <div style="margin-bottom:8px"><strong>${partes.length} partes</strong> para ${escapeHtml(alumno)}</div>
-    <button class="btn btn-primary btn-sm" onclick="generarPDFTutorAlumno(document.getElementById('infTutorAlumno').value)">📄 Exportar a PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="generarPDFTutorAlumno(document.getElementById('infTutorAlumno').value)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar a PDF</button>
     <div style="margin-top:10px">${partes.map(p => renderParteCard(p)).join('')}</div>
   `;
 };
@@ -5871,27 +5972,27 @@ function informesResultadosAdminHTML(scope){
 
   return `
     <div class="card">
-      <div class="card-title"><span>📊 Estadística general del centro</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Estadística general del centro</span></div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-value">${todasPartes.length}</div><div class="stat-label">Total partes</div></div>
         <div class="stat-card warning"><div class="stat-value">${todasPartes.filter(p=>p.estado!=='cerrado').length}</div><div class="stat-label">Abiertos</div></div>
         <div class="stat-card success"><div class="stat-value">${todasPartes.filter(p=>p.estado==='cerrado').length}</div><div class="stat-label">Cerrados</div></div>
         <div class="stat-card accent"><div class="stat-value">${todasPartes.filter(p=>p.tipo==='CGPC').length}</div><div class="stat-label">CGPC</div></div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="generarPDFAdminGeneral()">📄 Exportar informe general a PDF</button>
+      <button class="btn btn-primary btn-sm" onclick="generarPDFAdminGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar informe general a PDF</button>
     </div>
 
-    <div class="card">
+    <div class="card card-wide">
       <div class="card-title">
-        <span>📋 Todos los partes (${listado.length})</span>
-        <button class="btn btn-primary btn-sm" onclick="generarPDFTodosPartes()" title="Genera un informe A4 en PDF con los partes que se muestran ahora mismo en esta lista (respeta todos los filtros aplicados)">⬇️ Descargar PDF</button>
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Todos los partes (${listado.length})</span>
+        <button class="btn btn-primary btn-sm" onclick="generarPDFTodosPartes()" title="Genera un informe A4 en PDF con los partes que se muestran ahora mismo en esta lista (respeta todos los filtros aplicados)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button>
       </div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período o la búsqueda, o quita filtros.' : 'Listado completo del curso activo en orden cronológico inverso. Pulsa un parte para ver su detalle; la exportación a PDF respeta todos los filtros aplicados.'}</p>
       ${listado.length === 0 ? `<div class="empty-state"><p>No hay partes que coincidan con el filtro.</p></div>` : listado.map(p => renderParteCard(p)).join('')}
     </div>
 
     <div class="card">
-      <div class="card-title"><span>👤 Informe por alumno</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Informe por alumno</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período de arriba.' : 'Los partes del alumno se muestran en orden cronológico inverso.'}</p>
       <select id="infAdminAlumno" class="form-control" style="max-width:400px;margin-bottom:10px">
         <option value="">${alumnosUnicos.length ? '— Selecciona alumno —' : '— Sin resultados —'}</option>
@@ -5904,7 +6005,7 @@ function informesResultadosAdminHTML(scope){
     </div>
 
     <div class="card">
-      <div class="card-title"><span>🏫 Informe por grupo</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 1 0-4 0v4"/><path d="M18 5v17"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg> Informe por grupo</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados.' : 'Selecciona un grupo para ver el detalle y exportarlo a PDF.'}</p>
       <select id="infAdminGrupo" class="form-control" style="max-width:400px;margin-bottom:10px">
         <option value="">${gruposUnicos.length ? '— Selecciona grupo —' : '— Sin resultados —'}</option>
@@ -5917,7 +6018,7 @@ function informesResultadosAdminHTML(scope){
     </div>
 
     <div class="card">
-      <div class="card-title"><span>👨‍🏫 Informe por profesor</span></div>
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg> Informe por profesor</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados.' : 'Selecciona un profesor para ver el detalle y exportarlo a PDF.'}</p>
       <select id="infAdminProfesor" class="form-control" style="max-width:400px;margin-bottom:10px">
         <option value="">${profesoresUnicos.length ? '— Selecciona profesor —' : '— Sin resultados —'}</option>
@@ -5932,7 +6033,7 @@ function informesResultadosAdminHTML(scope){
   `;
 }
 
-/* "⬇️ Descargar PDF" de la tarjeta "📋 Todos los partes" (sección
+/* "<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF" de la tarjeta "<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Todos los partes" (sección
  * Informes, perfil admin): genera un informe A4 con el contenido que
  * se muestra en ese momento en la lista, respetando TODOS los filtros
  * del panel (período, búsqueda, tipo, grupo y estado). */
@@ -6077,7 +6178,7 @@ window.infAdminAlumnoChange = () => {
     .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
   div.innerHTML = `
     <div style="margin-bottom:8px"><strong>${partes.length} partes</strong> para ${escapeHtml(alumno)}</div>
-    <button class="btn btn-primary btn-sm" onclick="generarPDFAdminAlumno(document.getElementById('infAdminAlumno').value)">📄 Exportar a PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="generarPDFAdminAlumno(document.getElementById('infAdminAlumno').value)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar a PDF</button>
     <div style="margin-top:10px">${partes.map(p => renderParteCard(p)).join('')}</div>
   `;
 };
@@ -6132,7 +6233,7 @@ window.infAdminGrupoChange = () => {
     .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
   div.innerHTML = `
     <div style="margin-bottom:8px"><strong>${partes.length} partes</strong> en el grupo ${escapeHtml(grupo)}</div>
-    <button class="btn btn-primary btn-sm" onclick="generarPDFAdminGrupo(document.getElementById('infAdminGrupo').value)">📄 Exportar a PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="generarPDFAdminGrupo(document.getElementById('infAdminGrupo').value)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar a PDF</button>
     <div style="margin-top:10px">${partes.map(p => renderParteCard(p)).join('')}</div>
   `;
 };
@@ -6196,7 +6297,7 @@ window.infAdminProfesorChange = () => {
     .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
   div.innerHTML = `
     <div style="margin-bottom:8px"><strong>${partes.length} partes</strong> puestos por ${escapeHtml(profesor)}</div>
-    <button class="btn btn-primary btn-sm" onclick="generarPDFAdminProfesor(document.getElementById('infAdminProfesor').value)">📄 Exportar a PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="generarPDFAdminProfesor(document.getElementById('infAdminProfesor').value)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar a PDF</button>
     <div style="margin-top:10px">${partes.map(p => renderParteCard(p)).join('')}</div>
   `;
 };
@@ -6266,7 +6367,7 @@ function renderNotifications(c){
             <div class="notif-title">${escapeHtml(n.titulo||'Nueva notificación')}</div>
             <div class="notif-text">${escapeHtml(n.texto||'')}</div>
             ${n.profesorNombre ? `<div class="notif-text" style="margin-top:4px">Por: ${escapeHtml(n.profesorNombre)}</div>` : ''}
-            ${n.persistente && !n.leida ? '<div style="font-size:11px;color:var(--c-warning);font-weight:600;margin-top:4px">⚠️ Pendiente de revisar — abre el parte y marca el checkbox para confirmar</div>' : ''}
+            ${n.persistente && !n.leida ? '<div style="font-size:11px;color:var(--c-warning);font-weight:600;margin-top:4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Pendiente de revisar — abre el parte y marca el checkbox para confirmar</div>' : ''}
             <div class="notif-time">${fmtTiempoRelativo(n.createdAt)}</div>
           </div>
         </div>
@@ -6305,6 +6406,192 @@ window.marcarTodasLeidas = async () => {
   try{ await update(ref(db), updates); toast('Todas marcadas como leídas','success'); }catch(e){ toast('Error: '+e.message,'error'); }
 };
 
+/* ===== Cambio de contraseña (propia cuenta) =====
+ * Flujo: validar en cliente → reautenticar con la contraseña actual
+ * (confirma la identidad y evita el error auth/requires-recent-login)
+ * → updatePassword con la nueva. Solo se toca Firebase Auth, nunca la
+ * base de datos: las contraseñas no se guardan en RTDB. */
+window.abrirCambiarPassword = () => {
+  if(!auth.currentUser){ toast('No hay sesión activa. Vuelve a iniciar sesión.','error'); return; }
+  const body = `
+    <p style="margin-bottom:14px;font-size:13px;color:var(--c-text-soft);line-height:1.5">Cambia la contraseña de tu cuenta <strong>@${escapeHtml(currentUser.username||'')}</strong>. Introduce la actual para confirmar que eres tú.</p>
+    <div class="form-group">
+      <label for="cpActual">Contraseña actual</label>
+      <div class="pw-wrap">
+        <input type="password" id="cpActual" class="form-control" placeholder="Tu contraseña actual" autocomplete="current-password" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cpNueva').focus()}">
+        <button type="button" class="pw-eye" onclick="togglePwVisibility('cpActual',this)" title="Mostrar contraseña" aria-label="Mostrar u ocultar contraseña">
+          <svg class="pw-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="pw-eye-off" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="cpNueva">Nueva contraseña</label>
+      <div class="pw-wrap">
+        <input type="password" id="cpNueva" class="form-control" placeholder="Mínimo 6 caracteres" autocomplete="new-password" oninput="actualizarFuerzaPassword()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cpConfirmar').focus()}">
+        <button type="button" class="pw-eye" onclick="togglePwVisibility('cpNueva',this)" title="Mostrar contraseña" aria-label="Mostrar u ocultar contraseña">
+          <svg class="pw-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="pw-eye-off" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+      </div>
+      <div id="cpStrength" class="pw-strength">
+        <div class="bars"><i></i><i></i><i></i><i></i></div>
+        <span class="lbl"></span>
+      </div>
+      <div class="form-hint">Mínimo 6 caracteres. Se recomienda combinar mayúsculas, minúsculas, números y símbolos.</div>
+    </div>
+    <div class="form-group">
+      <label for="cpConfirmar">Repite la nueva contraseña</label>
+      <div class="pw-wrap">
+        <input type="password" id="cpConfirmar" class="form-control" placeholder="Otra vez la nueva contraseña" autocomplete="new-password" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarCambiarPassword()}">
+        <button type="button" class="pw-eye" onclick="togglePwVisibility('cpConfirmar',this)" title="Mostrar contraseña" aria-label="Mostrar u ocultar contraseña">
+          <svg class="pw-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="pw-eye-off" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="cpError" class="pw-error" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span></span>
+    </div>`;
+  const footer = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" id="cpBtn" onclick="confirmarCambiarPassword()">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      <span>Guardar contraseña</span>
+    </button>`;
+  openModal('Cambiar contraseña', body, footer);
+  actualizarFuerzaPassword();
+  /* Autofocus solo con puntero fino (escritorio): en móvil/táblet evita
+     que el teclado virtual salte nada más abrir el modal. */
+  try{
+    if(window.matchMedia && matchMedia('(pointer:fine)').matches){
+      setTimeout(() => { const el = $('cpActual'); if(el) el.focus({preventScroll:true}); }, 90);
+    }
+  }catch(_e){}
+};
+
+/* Muestra/oculta una contraseña y alterna el icono del ojo */
+window.togglePwVisibility = (inputId, btn) => {
+  const inp = $(inputId);
+  if(!inp || !btn) return;
+  const mostrar = inp.type === 'password';
+  inp.type = mostrar ? 'text' : 'password';
+  const titulo = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  btn.title = titulo;
+  btn.setAttribute('aria-label', titulo);
+  const on = btn.querySelector('.pw-eye-on'), off = btn.querySelector('.pw-eye-off');
+  if(on) on.style.display = mostrar ? 'none' : '';
+  if(off) off.style.display = mostrar ? '' : 'none';
+};
+
+/* Nivel de fortaleza de una contraseña: 0=muy corta ... 4=muy fuerte */
+function pwNivel(pw){
+  if(!pw) return -1;
+  if(pw.length < 6) return 0;
+  let pts = 1;
+  if(pw.length >= 10) pts++;
+  if(/[a-z]/.test(pw) && /[A-Z]/.test(pw)) pts++;
+  if(/\d/.test(pw)) pts++;
+  if(/[^A-Za-z0-9]/.test(pw)) pts++;
+  return Math.min(4, pts);
+}
+
+/* Repinta el medidor de fuerza según la nueva contraseña tecleada */
+window.actualizarFuerzaPassword = () => {
+  const inp = $('cpNueva'), cont = $('cpStrength');
+  if(!inp || !cont) return;
+  const pw = inp.value;
+  const nivel = pwNivel(pw);
+  const labels = ['Muy corta','Débil','Aceptable','Fuerte','Muy fuerte'];
+  const colores = ['#b3261e','#d97706','#b8860b','#2e7d4f','#1f5c3a'];
+  const bars = cont.querySelectorAll('.bars i');
+  const lbl = cont.querySelector('.lbl');
+  const encendidas = nivel < 0 ? 0 : Math.min(4, nivel + 1);
+  bars.forEach((b, i) => { b.style.background = (nivel >= 0 && i < encendidas) ? colores[nivel] : 'var(--c-border)'; });
+  if(lbl){
+    lbl.textContent = nivel >= 0 ? labels[nivel] : '';
+    lbl.style.color = nivel >= 0 ? colores[nivel] : 'var(--c-text-muted)';
+  }
+};
+
+/* Traduce los errores de Firebase Auth del cambio de contraseña */
+function mapearErrorCambioPassword(e){
+  const code = (e && e.code) ? e.code : '';
+  if(code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/invalid-email')
+    return { msg:'La contraseña actual no es correcta.', focus:'cpActual' };
+  if(code === 'auth/too-many-requests')
+    return { msg:'Demasiados intentos fallidos. Espera unos minutos antes de volver a intentarlo.' };
+  if(code === 'auth/network-request-failed')
+    return { msg:'Sin conexión con el servidor. Comprueba tu conexión a Internet y vuelve a intentarlo.' };
+  if(code === 'auth/weak-password')
+    return { msg:'La nueva contraseña es demasiado débil: usa al menos 6 caracteres.', focus:'cpNueva' };
+  if(code === 'auth/requires-recent-login')
+    return { msg:'Por seguridad, tu sesión ha caducado. Cierra sesión, vuelve a entrar e inténtalo de nuevo.' };
+  return { msg:'Error: ' + ((e && e.message) ? e.message : 'inesperado al cambiar la contraseña.') };
+}
+
+/* Valida, reautentica con la contraseña actual y guarda la nueva */
+window.confirmarCambiarPassword = async () => {
+  const actual = $('cpActual') ? $('cpActual').value : '';
+  const nueva = $('cpNueva') ? $('cpNueva').value : '';
+  const confirma = $('cpConfirmar') ? $('cpConfirmar').value : '';
+  const errBox = $('cpError');
+  const showErr = (msg) => {
+    if(!errBox) return;
+    const span = errBox.querySelector('span');
+    if(span) span.textContent = msg;
+    errBox.hidden = false;
+  };
+  if(errBox) errBox.hidden = true;
+
+  /* 1) Validaciones de cliente */
+  if(!actual || !nueva || !confirma){ showErr('Completa los tres campos para cambiar tu contraseña.'); return; }
+  if(nueva.length < 6){ showErr('La nueva contraseña debe tener al menos 6 caracteres.'); const f = $('cpNueva'); if(f) f.focus(); return; }
+  if(nueva !== confirma){ showErr('La nueva contraseña y su confirmación no coinciden.'); const f = $('cpConfirmar'); if(f) f.focus(); return; }
+  if(nueva === actual){ showErr('La nueva contraseña debe ser distinta de la actual.'); const f = $('cpNueva'); if(f) f.focus(); return; }
+
+  const user = auth.currentUser;
+  if(!user){ showErr('Tu sesión ha expirado. Cierra sesión y vuelve a iniciarla.'); return; }
+
+  /* 2) Bloquear el botón mientras se guarda */
+  const btn = $('cpBtn');
+  const btnHtml = btn ? btn.innerHTML : '';
+  const lblBtn = btn ? btn.querySelector('span') : null;
+  if(btn) btn.disabled = true;
+  if(lblBtn) lblBtn.textContent = 'Guardando...';
+
+  try{
+    const email = user.email || usernameToEmail(currentUser.username || '');
+    /* Confirmar la identidad con la contraseña actual */
+    try{
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(email, actual));
+    }catch(e){
+      throw mapearErrorCambioPassword(e);
+    }
+    /* Guardar la nueva contraseña (con un reintento si la sesión era antigua) */
+    try{
+      await updatePassword(user, nueva);
+    }catch(e){
+      if(e && e.code === 'auth/requires-recent-login'){
+        await reauthenticateWithCredential(user, EmailAuthProvider.credential(email, actual));
+        await updatePassword(user, nueva);
+      } else {
+        throw mapearErrorCambioPassword(e);
+      }
+    }
+    closeModal();
+    toast('Contraseña actualizada correctamente', 'success');
+  }catch(e){
+    const m = (e && e.msg) ? e : mapearErrorCambioPassword(e);
+    showErr(m.msg);
+    const f = m.focus ? $(m.focus) : null;
+    if(f){ f.focus(); if(f.select) f.select(); }
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = btnHtml; }
+  }
+};
+
 /* ===== Profile ===== */
 function renderProfile(c){
   const effRole = getEffectiveRole();
@@ -6333,9 +6620,22 @@ function renderProfile(c){
     ${effRole !== realRole ? `
     <div class="card" style="background:#f7f9fc;border-left:4px solid var(--c-info)">
       <div style="font-size:13px;color:var(--c-text-soft);line-height:1.5">
-        <strong>ℹ️ Estás trabajando en el entorno de ${escapeHtml(effRole)}.</strong> Tu rol real es <strong>${escapeHtml(realRole)}</strong>, pero has elegido entrar como <strong>${escapeHtml(effRole)}</strong>. Para cambiar de entorno, cierra sesión y vuelve a entrar eligiendo otro perfil.
+        <strong><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Estás trabajando en el entorno de ${escapeHtml(effRole)}.</strong> Tu rol real es <strong>${escapeHtml(realRole)}</strong>, pero has elegido entrar como <strong>${escapeHtml(effRole)}</strong>. Para cambiar de entorno, cierra sesión y vuelve a entrar eligiendo otro perfil.
       </div>
     </div>` : ''}
+
+    <div class="card">
+      <div class="card-title">
+        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Seguridad</span>
+        <span class="chip">Acceso a tu cuenta</span>
+      </div>
+      <div class="detail-row"><span class="label">Usuario</span><span class="value">@${escapeHtml(currentUser.username||'')}</span></div>
+      <div class="detail-row"><span class="label">Contraseña</span><span class="value">••••••••</span></div>
+      <p style="font-size:12.5px;color:var(--c-text-soft);line-height:1.5;margin:12px 0 14px">Puedes cambiar tu contraseña en cualquier momento. Necesitarás confirmar la actual; la nueva se usará a partir del siguiente inicio de sesión (tu sesión actual no se cierra).</p>
+      <button class="btn btn-primary" onclick="abrirCambiarPassword()">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Cambiar contraseña
+      </button>
+    </div>
 
     <div class="card">
       <div class="card-title">Acciones</div>
