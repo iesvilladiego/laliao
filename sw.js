@@ -1,7 +1,7 @@
 // Service Worker para LaLiao V2
 // Cachea los recursos principales para funcionamiento offline
 
-const CACHE_NAME = 'laliao-v2-v12';
+const CACHE_NAME = 'laliao-v2-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -50,6 +50,14 @@ self.addEventListener('fetch', (event) => {
 
   // Solo interceptar GET
   if (event.request.method !== 'GET') return;
+
+  // Aislamiento respecto al portal: solo interceptar peticiones dentro
+  // de la carpeta de la app (el scope del SW). El portal
+  // https://iesvilladiego.github.io vive en la raíz del dominio y sus
+  // páginas/recursos jamás pasan por este SW, así que ambas PWA pueden
+  // convivir e instalarse por separado sin interferencia.
+  const scopePath = new URL(self.registration.scope).pathname;
+  if (!url.pathname.startsWith(scopePath)) return;
 
   // Cache-first para assets locales
   if (url.origin === self.location.origin) {

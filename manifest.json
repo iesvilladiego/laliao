@@ -4,6 +4,7 @@
   "description": "Gestión de partes de incidencias de convivencia - IES Virgen de Villadiego",
   "start_url": "./",
   "scope": "./",
+  "id": "./",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "orientation": "portrait-primary",

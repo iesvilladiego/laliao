@@ -5871,6 +5871,7 @@ function informesResultadosAdminHTML(scope){
       <div class="card-title">
         <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Todos los partes (${listado.length})</span>
         <button class="btn btn-primary btn-sm" onclick="generarPDFTodosPartes()" title="Genera un informe A4 en PDF con los partes que se muestran ahora mismo en esta lista (respeta todos los filtros aplicados)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button>
+        <button class="btn btn-secondary btn-sm" onclick="generarInformeHTML()" title="Genera un informe interactivo en HTML: portada con el período, una pestaña por unidad del centro y filtro CCNC/CGPC en cada página. Se descarga como archivo .html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Informe HTML</button>
       </div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período o la búsqueda, o quita filtros.' : 'Listado completo del curso activo en orden cronológico inverso. Pulsa un parte para ver su detalle; la exportación a PDF respeta todos los filtros aplicados.'}</p>
       ${listado.length === 0 ? `<div class="empty-state"><p>No hay partes que coincidan con el filtro.</p></div>` : listado.map(p => renderParteCard(p)).join('')}
@@ -5960,6 +5961,398 @@ window.generarPDFTodosPartes = () => {
   // Nombre de archivo con información del contenido: curso + período + filtros activos
   imprimirInforme(`Todos_los_partes_${cursoActivo}_${informesPeriodoFilename()}${informesFiltrosFilenameSuffix()}`);
 };
+
+/* Informe interactivo en HTML (solo admin): genera un documento
+ * autocontenido y descargable con una portada (título + período
+ * seleccionado) y una pestaña por unidad (grupo) del centro. Cada
+ * subpágina lista los partes de esa unidad en el período filtrado e
+ * incluye botones CCNC/CGPC que filtran las conductas. El usuario elige
+ * los datos con los filtros del panel; lo que ve la lista "Todos los
+ * partes" es exactamente lo que acaba en el informe. */
+window.generarInformeHTML = () => {
+  const cursoActivo = informesCursoSel();
+  const list = filtrarPartesInforme(informesScopeList())
+    .sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
+  if(list.length === 0){ toast('No hay partes que coincidan con los filtros: no se puede generar un informe vacío.','error'); return; }
+
+  const dato = p => ({
+    alumno: p.alumnoNombre || '—',
+    fecha: fmtFecha(p.fechaIncidente) + (p.horaIncidente ? ' · ' + p.horaIncidente : ''),
+    codigo: p.conductaId || '—',
+    conducta: (ALL_CONDUCTAS[p.conductaId] || {}).texto || p.conductaTexto || '',
+    tipo: p.tipo === 'CGPC' ? 'CGPC' : 'CCNC',
+    descripcion: p.descripcion || '',
+    profesor: p.profesorNombre || '—',
+    ubicacion: p.ubicacion || '',
+    respiro: !!p.aulaRespiro,
+    familia: !!p.notificadoFamilia,
+    tutor: !!p.notificadoTutor
+  });
+  const grupos = [...new Set(list.map(p => p.grupo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const payload = {
+    centro: APP_TITLE,
+    curso: cursoActivo,
+    periodo: informesPeriodoLabel(),
+    filtros: informesFiltrosActivosTexto(),
+    generado: fmtFechaHora(Date.now()),
+    grupos: grupos.map(g => ({ nombre: g, partes: list.filter(p => p.grupo === g).map(dato) })),
+    sinGrupo: list.filter(p => !p.grupo).map(dato)
+  };
+  // < escapado para que nunca pueda romper el <script> embebido
+  const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+
+  const html = informeHTMLPlantilla(json);
+  const blob = new Blob(['\ufeff', html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Informe_interactivo_${cursoActivo}_${informesPeriodoFilename()}${informesFiltrosFilenameSuffix()}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast('Informe HTML descargado','success');
+};
+
+/* Plantilla del documento HTML autocontenido: CSS y JS incrustados, sin
+ * dependencias externas, para que funcione abriendo el archivo directamente. */
+function informeHTMLPlantilla(json){
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Informe de partes de incidencia</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif;background:#f4f6f9;color:#1f2933;padding-bottom:60px}
+.tabs{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;background:#1e3a5f;box-shadow:0 2px 8px rgba(15,30,60,.25)}
+.tab{border:0;cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:18px;background:rgba(255,255,255,.14);color:#fff;transition:background .15s}
+.tab:hover{background:rgba(255,255,255,.28)}
+.tab.activa{background:#c9a227;color:#15294a}
+.tab .n{font-weight:400;opacity:.75;margin-left:5px;font-size:12px}
+.page{display:none;max-width:900px;margin:0 auto;padding:22px 16px}
+.page.activa{display:block}
+.portada{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(15,30,60,.12);padding:48px 36px;text-align:center;margin-top:30px;border-top:6px solid #c9a227}
+.portada h1{color:#1e3a5f;font-size:28px;line-height:1.3}
+.portada .periodo{font-size:20px;color:#c9a227;font-weight:700;margin-top:12px}
+.portada .meta{margin-top:18px;font-size:14px;color:#52606d;line-height:1.8}
+.portada .centro{margin-top:34px;font-size:13px;color:#7b8794}
+h2.titulo{color:#1e3a5f;font-size:22px;margin-bottom:4px}
+.sub{font-size:13px;color:#7b8794;margin-bottom:14px}
+.filtros-tipo{display:flex;gap:8px;margin:0 0 16px;align-items:center;flex-wrap:wrap}
+.ftipo{border:2px solid #e1e7ef;background:#fff;cursor:pointer;font:inherit;font-size:13px;font-weight:700;padding:6px 16px;border-radius:18px;color:#52606d;transition:all .15s}
+.ftipo.ccnc.activa{background:#e0eef9;border-color:#1c6fb8;color:#1c6fb8}
+.ftipo.cgpc.activa{background:#fbe6e4;border-color:#b3261e;color:#b3261e}
+.contador{font-size:13px;color:#7b8794;margin-left:auto}
+.card{background:#fff;border:1px solid #e1e7ef;border-left:4px solid #1c6fb8;border-radius:10px;padding:13px 15px;margin-bottom:10px;box-shadow:0 1px 2px rgba(15,30,60,.05)}
+.card.cgpc{border-left-color:#b3261e}
+.card .cab{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.card .alumno{font-weight:700;font-size:15px}
+.chip{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.chip.ccnc{background:#e0eef9;color:#1c6fb8}
+.chip.cgpc{background:#fbe6e4;color:#b3261e}
+.card .codigo{font-family:Consolas,monospace;font-size:12px;background:#f1f4f8;padding:1px 6px;border-radius:5px;color:#1e3a5f;font-weight:600;margin-right:6px}
+.card .conducta{font-size:13px;color:#52606d;margin:6px 0}
+.card .desc{font-size:12.5px;color:#52606d;background:#f7f9fc;border-radius:6px;padding:6px 8px;margin:6px 0;white-space:pre-wrap;line-height:1.4}
+.card .meta{display:flex;flex-wrap:wrap;gap:10px;font-size:11.5px;color:#7b8794;border-top:1px dashed #e1e7ef;padding-top:7px;margin-top:7px}
+.card .meta .ok{color:#2e7d4f;font-weight:600}
+.stat-grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px;justify-content:center}
+.stat.btn-stat{cursor:pointer;border:2px solid #e1e7ef;transition:all .15s}
+.stat.btn-stat:hover{border-color:#c9a227;transform:translateY(-2px);box-shadow:0 4px 12px rgba(15,30,60,.08)}
+.stat.btn-stat.activa{border-color:#c9a227;background:#fdf8e7}
+.res-portada{margin-top:26px;text-align:left}
+.res-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.res-titulo{font-size:14px;font-weight:700;color:#1e3a5f}
+.res-quitar{border:0;background:#eef1f5;color:#52606d;cursor:pointer;font:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:14px}
+.res-quitar:hover{background:#e1e7ef}
+.chip-alumno{border:2px solid #e1e7ef;background:#fff;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:#1e3a5f;padding:6px 13px;border-radius:16px;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.chip-alumno:hover{border-color:#c9a227}
+.chip-alumno.activa{border-color:#c9a227;background:#fdf8e7}
+.chip-alumno .n{background:#1e3a5f;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 8px}
+.res-unidad{font-size:11.5px;color:#7b8794}
+.stat{background:#fff;border:1px solid #e1e7ef;border-radius:12px;padding:14px 26px;min-width:110px}
+.stat .num{font-size:26px;font-weight:800;color:#1e3a5f}
+.stat .lbl{font-size:12px;color:#7b8794;margin-top:2px}
+.vacio{background:#fff;border:1px dashed #c9a227;border-radius:10px;padding:22px;text-align:center;color:#7b8794;font-size:14px}
+.alumnos-strip{background:#fff;border:1px solid #e1e7ef;border-radius:10px;padding:12px 15px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,30,60,.05)}
+.strip-titulo{font-size:12px;font-weight:700;color:#7b8794;text-transform:uppercase;letter-spacing:.03em;margin-bottom:9px}
+.strip-botones{display:flex;flex-wrap:wrap;gap:8px}
+.alumno-btn{border:2px solid #e1e7ef;background:#f7f9fc;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;color:#1e3a5f;padding:7px 14px;border-radius:18px;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.alumno-btn:hover{border-color:#c9a227;background:#fdf8e7;transform:translateY(-1px)}
+.alumno-btn .n{background:#1e3a5f;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 8px}
+.alumno-btn.multi{border-color:#c9a227}
+.alumno-btn.multi .n{background:#c9a227;color:#15294a}
+.btn-volver{border:0;background:#1e3a5f;color:#fff;cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;margin-bottom:14px;transition:background .15s}
+.btn-volver:hover{background:#2d5485}
+.ficha-alumno{animation:aparecer .18s ease-out}
+.titulo-alumno{color:#1e3a5f;font-size:21px;margin-bottom:2px}
+@keyframes aparecer{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media print{
+  .tabs{display:none}
+  .page{display:block !important;max-width:none;padding:0}
+  .portada{box-shadow:none;margin-top:0}
+  .card,.vacio{break-inside:avoid}
+  .sep-print{page-break-before:always}
+  .filtros-tipo{display:none}
+}
+</style>
+</head>
+<body>
+<nav class="tabs" id="barraTabs"></nav>
+<main id="contenido"></main>
+<script>
+var DATA = ${json};
+var filtroActivo = {};
+var ALUMNOS = {};
+function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function construir(){
+  var barra = document.getElementById('barraTabs');
+  var cont = document.getElementById('contenido');
+  var html = '';
+  var tabs = '<button class="tab activa" onclick="mostrar(0,this)">Portada</button>';
+  html += paginaPortada();
+  var unidades = [];
+  DATA.grupos.forEach(function(g){ unidades.push(g); });
+  if(DATA.sinGrupo.length > 0){ unidades.push({ nombre: 'Sin grupo', partes: DATA.sinGrupo }); }
+  unidades.forEach(function(g, i){
+    tabs += '<button class="tab" onclick="mostrar(' + (i+1) + ',this)">' + esc(g.nombre) + '<span class="n">(' + g.partes.length + ')</span></button>';
+    html += paginaUnidad(g, i+1);
+  });
+  barra.innerHTML = tabs;
+  cont.innerHTML = html;
+}
+function paginaPortada(){
+  prepararPortada();
+  var total = 0, ccnc = 0, cgpc = 0, alumnos = {}, grupos = 0;
+  DATA.grupos.forEach(function(g){ grupos++; g.partes.forEach(function(p){ total++; if(p.tipo === 'CGPC'){ cgpc++; } else { ccnc++; } alumnos[p.alumno] = 1; }); });
+  DATA.sinGrupo.forEach(function(p){ total++; if(p.tipo === 'CGPC'){ cgpc++; } else { ccnc++; } alumnos[p.alumno] = 1; });
+  var nal = Object.keys(alumnos).length;
+  return '<section class="page activa" id="pg-0">' +
+    '<div class="portada">' +
+      '<h1>Informe de partes de incidencia<br>en el período ' + esc(DATA.periodo) + '</h1>' +
+      '<div class="periodo">Curso ' + esc(DATA.curso) + '</div>' +
+      '<div class="meta">' +
+        'Filtros aplicados: ' + esc(DATA.filtros) + '<br>' +
+        'Unidades del centro incluidas: ' + grupos + '<br>' +
+        'Generado el ' + esc(DATA.generado) +
+      '</div>' +
+      '<div class="stat-grid">' +
+        '<div class="stat btn-stat" id="st-todos" data-f="" onclick="filtrarPortadaBtn(this)"><div class="num">' + total + '</div><div class="lbl">Partes totales</div></div>' +
+        '<div class="stat btn-stat" id="st-ccnc" data-f="CCNC" onclick="filtrarPortadaBtn(this)"><div class="num">' + ccnc + '</div><div class="lbl">CCNC</div></div>' +
+        '<div class="stat btn-stat" id="st-cgpc" data-f="CGPC" onclick="filtrarPortadaBtn(this)"><div class="num">' + cgpc + '</div><div class="lbl">CGPC</div></div>' +
+        '<div class="stat btn-stat" id="st-alumnos" onclick="toggleAlumnosPortada()"><div class="num">' + nal + '</div><div class="lbl">Alumnos afectados</div></div>' +
+      '</div>' +
+      '<div id="res-portada" class="res-portada"></div>' +
+      '<div class="centro">' + esc(DATA.centro) + ' · Plan de Convivencia</div>' +
+    '</div>' +
+  '</section>';
+}
+function paginaUnidad(g, idx){
+  var h = '<section class="page sep-print" id="pg-' + idx + '">' +
+    '<h2 class="titulo">Unidad: ' + esc(g.nombre) + '</h2>' +
+    '<div class="sub">Partes de incidencia en ' + esc(DATA.periodo) + ' · Curso ' + esc(DATA.curso) + '</div>';
+  // Pantalla intermedia: un botón por alumno con el número de partes;
+  // el desglose de fichas se muestra al pulsar cada botón.
+  var alumnos = agruparAlumnos(g.partes);
+  ALUMNOS[idx] = alumnos;
+  // Contenedor de la pantalla de botones (se oculta al abrir una ficha)
+  h += '<div id="lista-' + idx + '">';
+  if(g.partes.length === 0){
+    h += '<div class="vacio">No hay partes de esta unidad en el período seleccionado.</div>';
+  } else {
+    h += '<div class="alumnos-strip">' +
+        '<div class="strip-titulo">Alumnos de la unidad (' + alumnos.length + ') — pulsa un alumno para ver el desglose de sus partes:</div>' +
+        '<div class="strip-botones">';
+    alumnos.forEach(function(a, ai){
+      h += '<button class="alumno-btn' + (a.partes.length >= 2 ? ' multi' : '') + '" onclick="verAlumno(' + idx + ', ' + ai + ')">' +
+        esc(a.nombre) + '<span class="n">' + a.partes.length + '</span></button>';
+    });
+    h += '</div></div>';
+  }
+  h += '</div>';
+  // Contenedor del desglose del alumno (oculto hasta que se pulse su botón)
+  h += '<div id="alumno-' + idx + '" style="display:none"></div>';
+  return h + '</section>';
+}
+function agruparAlumnos(partes){
+  var map = {};
+  var orden = [];
+  partes.forEach(function(p){
+    if(!map[p.alumno]){ map[p.alumno] = { nombre: p.alumno, partes: [] }; orden.push(map[p.alumno]); }
+    map[p.alumno].partes.push(p);
+  });
+  orden.sort(function(a, b){ return a.nombre.localeCompare(b.nombre, 'es'); });
+  return orden;
+}
+/* Portada viva: los botones de estadística filtran y muestran los
+ * resultados en la propia portada. PF guarda el estado del filtro. */
+var PORTADA = [];
+var PF = { tipo: null, alumno: -1, verAlumnos: false, mostrar: false };
+function prepararPortada(){
+  PORTADA = [];
+  DATA.grupos.forEach(function(g){
+    g.partes.forEach(function(p){ var q = {}; for(var k in p){ q[k] = p[k]; } q.unidad = g.nombre; PORTADA.push(q); });
+  });
+  DATA.sinGrupo.forEach(function(p){ var q = {}; for(var k in p){ q[k] = p[k]; } q.unidad = 'Sin grupo'; PORTADA.push(q); });
+  PF = { tipo: null, alumno: -1, verAlumnos: false, mostrar: false };
+}
+function filtrarPortadaBtn(btn){
+  var f = btn.getAttribute('data-f');
+  if(f === ''){
+    PF.tipo = null;
+  } else {
+    PF.tipo = (PF.tipo === f) ? null : f;
+  }
+  PF.alumno = -1;
+  PF.verAlumnos = false;
+  PF.mostrar = true;
+  pintarPortada();
+}
+function toggleAlumnosPortada(){
+  PF.verAlumnos = !PF.verAlumnos;
+  PF.alumno = -1;
+  PF.tipo = null;
+  PF.mostrar = PF.verAlumnos;
+  pintarPortada();
+}
+function filtrarPortadaAlumnoI(ai){
+  PF.alumno = (PF.alumno === ai) ? -1 : ai;
+  PF.tipo = null;
+  PF.mostrar = PF.alumno !== -1;
+  pintarPortada();
+}
+function limpiarPortada(){
+  PF = { tipo: null, alumno: -1, verAlumnos: false, mostrar: false };
+  pintarPortada();
+}
+function cardPortada(p, i){
+  return '<div class="card ' + (p.tipo === 'CGPC' ? 'cgpc' : 'ccnc') + '">' +
+    '<div class="cab"><span class="alumno">' + esc(p.alumno) + '</span><span class="chip ' + (p.tipo === 'CGPC' ? 'cgpc' : 'ccnc') + '">' + p.tipo + '</span></div>' +
+    '<div class="conducta"><span class="codigo">' + esc(p.codigo) + '</span>' + esc(p.conducta) + '</div>' +
+    (p.descripcion ? '<div class="desc">' + esc(p.descripcion) + '</div>' : '') +
+    '<div class="meta"><span>' + esc(p.fecha) + '</span><span>' + esc(p.unidad) + '</span><span>' + esc(p.profesor) + '</span>' +
+      (p.ubicacion ? '<span>' + esc(p.ubicacion) + '</span>' : '') +
+      (p.respiro ? '<span>Aula Respiro</span>' : '') +
+      (p.familia ? '<span class="ok">Familia avisada</span>' : '') +
+      (p.tutor ? '<span class="ok">Tutor avisado</span>' : '') +
+    '</div>' +
+  '</div>';
+}
+function pintarPortada(){
+  var stT = document.getElementById('st-todos');
+  var stC = document.getElementById('st-ccnc');
+  var stG = document.getElementById('st-cgpc');
+  var stA = document.getElementById('st-alumnos');
+  if(stT){ stT.classList.toggle('activa', PF.mostrar && !PF.tipo && PF.alumno === -1 && !PF.verAlumnos); }
+  if(stC){ stC.classList.toggle('activa', PF.tipo === 'CCNC'); }
+  if(stG){ stG.classList.toggle('activa', PF.tipo === 'CGPC'); }
+  if(stA){ stA.classList.toggle('activa', PF.verAlumnos || PF.alumno !== -1); }
+  var cont = document.getElementById('res-portada');
+  if(!cont){ return; }
+  var sinFiltro = !PF.mostrar;
+  if(sinFiltro){ cont.innerHTML = ''; return; }
+  var alumnos = agruparAlumnos(PORTADA);
+  var h = '<div class="res-cab">';
+  if(PF.verAlumnos || PF.alumno !== -1){
+    h += '<span class="res-titulo">Alumnado afectado:</span>';
+    alumnos.forEach(function(a, ai){
+      h += '<button class="chip-alumno' + (PF.alumno === ai ? ' activa' : '') + '" onclick="filtrarPortadaAlumnoI(' + ai + ')">' +
+        esc(a.nombre) + '<span class="n">' + a.partes.length + '</span></button>';
+    });
+  } else {
+    h += '<span class="res-titulo">Resultados: ' + esc(PF.tipo || 'todas las conductas') + '</span>';
+  }
+  h += '<button class="res-quitar" onclick="limpiarPortada()">✕ Quitar</button></div>';
+  var lista = PORTADA;
+  if(PF.tipo){ lista = lista.filter(function(p){ return p.tipo === PF.tipo; }); }
+  if(PF.alumno !== -1){ var sel = alumnos[PF.alumno]; lista = lista.filter(function(p){ return sel && p.alumno === sel.nombre; }); }
+  if(lista.length === 0){
+    h += '<div class="vacio">No hay partes que coincidan con el filtro seleccionado.</div>';
+  } else {
+    lista.forEach(function(p){ h += cardPortada(p); });
+  }
+  cont.innerHTML = h;
+}
+function verAlumno(idx, ai){
+  var a = (ALUMNOS[idx] || [])[ai];
+  if(!a){ return; }
+  var h = '<div class="ficha-alumno">' +
+    '<button class="btn-volver" onclick="volverUnidad(' + idx + ')">&#8592; Volver a la unidad</button>' +
+    '<h3 class="titulo-alumno">' + esc(a.nombre) + '</h3>' +
+    '<div class="sub">' + a.partes.length + ' partes de incidencia en ' + esc(DATA.periodo) + ' · Curso ' + esc(DATA.curso) + '</div>' +
+    '<div class="filtros-tipo">' +
+      '<span style="font-size:12px;color:#7b8794;font-weight:600">Filtrar conductas:</span>' +
+      '<button class="ftipo ccnc" data-t="CCNC" onclick="filtrarTipo(' + idx + ', this)">CCNC</button>' +
+      '<button class="ftipo cgpc" data-t="CGPC" onclick="filtrarTipo(' + idx + ', this)">CGPC</button>' +
+      '<span class="contador" id="conta-' + idx + '"></span>' +
+    '</div>';
+  a.partes.forEach(function(p){
+    h += '<div class="card ' + (p.tipo === 'CGPC' ? 'cgpc' : 'ccnc') + '" data-pg="' + idx + '" data-tipo="' + p.tipo + '">' +
+      '<div class="cab"><span class="alumno">' + esc(p.alumno) + '</span><span class="chip ' + (p.tipo === 'CGPC' ? 'cgpc' : 'ccnc') + '">' + p.tipo + '</span></div>' +
+      '<div class="conducta"><span class="codigo">' + esc(p.codigo) + '</span>' + esc(p.conducta) + '</div>' +
+      (p.descripcion ? '<div class="desc">' + esc(p.descripcion) + '</div>' : '') +
+      '<div class="meta"><span>' + esc(p.fecha) + '</span><span>' + esc(p.profesor) + '</span>' +
+        (p.ubicacion ? '<span>' + esc(p.ubicacion) + '</span>' : '') +
+        (p.respiro ? '<span>Aula Respiro</span>' : '') +
+        (p.familia ? '<span class="ok">Familia avisada</span>' : '') +
+        (p.tutor ? '<span class="ok">Tutor avisado</span>' : '') +
+      '</div>' +
+    '</div>';
+  });
+  h += '</div>';
+  var cont = document.getElementById('alumno-' + idx);
+  cont.innerHTML = h;
+  document.getElementById('lista-' + idx).style.display = 'none';
+  cont.style.display = '';
+  window.scrollTo(0, 0);
+  aplicar(idx);
+}
+function volverUnidad(idx){
+  document.getElementById('alumno-' + idx).style.display = 'none';
+  document.getElementById('alumno-' + idx).innerHTML = '';
+  document.getElementById('lista-' + idx).style.display = '';
+  window.scrollTo(0, 0);
+}
+function mostrar(idx, btn){
+  var ps = document.querySelectorAll('.page');
+  for(var i = 0; i < ps.length; i++){ ps[i].classList.remove('activa'); }
+  document.getElementById('pg-' + idx).classList.add('activa');
+  var ts = document.querySelectorAll('.tab');
+  for(var j = 0; j < ts.length; j++){ ts[j].classList.remove('activa'); }
+  btn.classList.add('activa');
+  // Al cambiar de pestaña, devolver la unidad a su listado completo
+  for(var k in ALUMNOS){
+    if(ALUMNOS.hasOwnProperty(k)){ volverUnidad(k); }
+  }
+  window.scrollTo(0, 0);
+}
+function filtrarTipo(idx, btn){
+  var tipo = btn.getAttribute('data-t');
+  var set = filtroActivo[idx] || (filtroActivo[idx] = {});
+  if(set[tipo]){ delete set[tipo]; btn.classList.remove('activa'); }
+  else { set[tipo] = true; btn.classList.add('activa'); }
+  aplicar(idx);
+}
+function aplicar(idx){
+  var set = filtroActivo[idx] || {};
+  var visibles = 0;
+  var cards = document.querySelectorAll('[data-pg="' + idx + '"]');
+  for(var i = 0; i < cards.length; i++){
+    var t = cards[i].getAttribute('data-tipo');
+    var ok = (!set.CCNC && !set.CGPC) || set[t];
+    cards[i].style.display = ok ? '' : 'none';
+    if(ok){ visibles++; }
+  }
+  // Contador de la ficha de alumno abierta (si la hay)
+  var ca = document.getElementById('conta-' + idx);
+  if(ca){ ca.textContent = visibles + ' partes visibles'; }
+}
+construir();
+<\/script>
+</body>
+</html>`;
+}
 
 window.generarPDFAdminGeneral = () => {
   const cursoActivo = informesCursoSel();
@@ -6560,21 +6953,16 @@ setTimeout(showLoginScreenIfNeeded, 2500);
 </script>
 
 <script>
+/* PWA: registro del Service Worker.
+ * El registro es relativo ('sw.js'), así que el ámbito (scope) del SW
+ * queda limitado a la carpeta donde esté desplegada la app. Esto es lo
+ * que permite conviver con el portal https://iesvilladiego.github.io en
+ * el mismo dominio: el SW solo controla páginas dentro de su carpeta y
+ * nunca interfiere con las del portal, y ambas PWA se pueden instalar
+ * por separado (manifests y scopes independientes). */
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').then(function(reg){
-      console.log('SW registered:', reg.scope);
-    }).catch(function(err){
-      console.log('SW registration failed:', err);
-    });
-  });
-}
-</script>
-
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').then(function(reg){
+    navigator.serviceWorker.register('sw.js', { scope: './' }).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(err){
       console.log('SW registration failed:', err);
