@@ -256,6 +256,14 @@ input[type="date"].form-control,input[type="time"].form-control{min-height:44px}
 .card{background:var(--c-surface);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow-sm);margin-bottom:14px;border:1px solid var(--c-border)}
 .card-title{font-size:15px;font-weight:600;color:var(--c-text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .card-title .actions{display:flex;gap:6px}
+/* Tarjetas acordeón (details/summary): colapsadas por defecto */
+details.acc-card{background:var(--c-surface);border-radius:var(--radius-lg);padding:0;box-shadow:var(--shadow-sm);margin-bottom:14px;border:1px solid var(--c-border)}
+details.acc-card>summary{list-style:none;cursor:pointer;padding:18px;font-size:15px;font-weight:600;color:var(--c-text);display:flex;align-items:center;gap:8px;user-select:none}
+details.acc-card>summary::-webkit-details-marker{display:none}
+details.acc-card>summary::after{content:'';margin-left:auto;flex-shrink:0;width:10px;height:10px;border-right:2px solid var(--c-text-muted);border-bottom:2px solid var(--c-text-muted);transform:rotate(-45deg);transition:transform .15s ease}
+details.acc-card[open]>summary::after{transform:rotate(45deg)}
+details.acc-card>summary:hover{background:rgba(0,0,0,.02)}
+details.acc-card>.acc-body{padding:0 18px 18px}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--c-text-muted)}
 .empty-state svg{width:56px;height:56px;opacity:.4;margin-bottom:12px}
@@ -465,9 +473,8 @@ input[type="date"].form-control,input[type="time"].form-control{min-height:44px}
 }
 /* Tablet (600-899px): la sección de informes aprovecha el ancho en 2 columnas */
 @media(min-width:600px) and (max-width:899px){
-  #infResultados{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
-  #infResultados > .card{margin-bottom:0}
-  #infResultados > .card-wide{grid-column:1/-1}
+  #infResultadosMain,#infResultadosResto{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #infResultadosMain>*,#infResultadosResto>*{margin-bottom:0}
 }
 /* Móvil/tablet en landscape (poco alto): chrome compacto */
 @media(max-height:430px) and (max-width:1000px){
@@ -1097,6 +1104,7 @@ let cachedPartes = [];
 let lastPartesSig = null;    // firma de los partes cargados: evita re-renders innecesarios
 let cachedNotifications = [];
 let cachedUbicaciones = [];   // lista de ubicaciones configurada por el admin
+let cachedDiasNoLectivos = {};  // calendario escolar: { 'YYYY-MM-DD': {categorias, detalle} }
 let cachedCursos = [];        // lista de cursos escolares disponibles
 let cachedCursoActivo = null; // curso activo (etiqueta "YYYY-YYYY")
 let previousViewBeforeConfig = null;  // vista desde la que se entró a Configuración
@@ -1133,6 +1141,19 @@ const fmtTiempoRelativo = (ts) => {
   return fmtFecha(ts);
 };
 const todayStr = () => new Date().toISOString().split('T')[0];
+
+/* Acordeones exclusivos: dentro de cada grupo (data-acc-group), solo un
+ * <details> puede estar desplegado a la vez. El evento toggle no burbujea,
+ * por lo que se escucha en fase de captura. */
+document.addEventListener('toggle', (e) => {
+  const d = e.target;
+  if(!(d instanceof HTMLDetailsElement) || !d.open) return;
+  const grupo = d.getAttribute('data-acc-group');
+  if(!grupo) return;
+  document.querySelectorAll(`details[data-acc-group="${grupo}"]`).forEach(o => {
+    if(o !== d && o.open) o.open = false;
+  });
+}, true);
 const nowTimeStr = () => new Date().toTimeString().slice(0,5);
 
 /* ===== Toast etc. available globally for inline handlers ===== */
@@ -1561,6 +1582,15 @@ function startListeners(){
   });
   unsubscribers.push(unsubUbi);
 
+  // Listen al calendario escolar (días no lectivos importados por el admin)
+  const dnlRef = ref(db, `${DB_ROOT}/config/diasNoLectivos`);
+  const unsubDnl = onValue(dnlRef, (snap) => {
+    const val = snap.val();
+    cachedDiasNoLectivos = (val && typeof val === 'object' && !Array.isArray(val)) ? val : {};
+    if(['nuevoParte','configuracion'].includes(currentView)) renderCurrentView();
+  });
+  unsubscribers.push(unsubDnl);
+
   // Listen to cursos (lista de cursos escolares) — real-time
   const cursosRef = ref(db, `${DB_ROOT}/cursos`);
   const unsubCursos = onValue(cursosRef, (snap) => {
@@ -1915,7 +1945,7 @@ const NAV_ITEMS = [
   { id:'usuarios', label:'Usuarios', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', roles:['admin'] },
   { id:'configuracion', label:'Configuración', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>', roles:['admin'] },
   { id:'cursos', label:'Cursos', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', roles:['admin'] },
-  { id:'notifications', label:'Avisos', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' },
+  { id:'notifications', label:'Avisos', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', roles:['tutor'] },
   { id:'informes', label:'Informes', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
   { id:'profile', label:'Perfil', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' }
 ];
@@ -2284,23 +2314,6 @@ function renderDashboard(c){
 
     <div class="card">
       <div class="card-title">
-        Acciones rápidas
-      </div>
-      <div class="flex flex-wrap gap-8">
-        ${effRole === 'profesor' ? `<button class="btn btn-primary" onclick="navigate('nuevoParte')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Crear parte de incidencia
-        </button>` : ''}
-        <button class="btn btn-secondary" onclick="navigate('misPartes')">
-          Ver mis partes
-        </button>
-        ${isTutor ? `<button class="btn btn-secondary" onclick="navigate('partesTutoria')">Partes de mi tutoría</button>` : ''}
-        ${isAdmin ? `<button class="btn btn-secondary" onclick="navigate('alumnado')">Gestionar alumnado</button>` : ''}
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
         Partes recientes
         <button class="btn btn-sm btn-ghost" onclick="navigate('${isRealAdmin() ? 'informes' : 'misPartes'}')">Ver todos →</button>
       </div>
@@ -2373,7 +2386,8 @@ function renderNuevoParte(c){
       <div class="form-row">
         <div class="form-group">
           <label>Fecha de la incidencia <span class="required">*</span></label>
-          <input type="date" id="npFecha" class="form-control" value="${todayStr()}">
+          <input type="date" id="npFecha" class="form-control" value="${todayStr()}" onchange="validarNpFecha()">
+          <div class="form-hint" id="npFechaHint" style="display:none;color:var(--c-danger);font-weight:500"></div>
         </div>
         <div class="form-group">
           <label>Hora aproximada</label>
@@ -2620,6 +2634,32 @@ window.selectConducta = (el, id) => {
   el.querySelector('input').checked = true;
 };
 
+/* Días en los que no se pueden imponer partes: sábados, domingos y los
+ * no lectivos importados al calendario escolar por el administrador.
+ * Devuelve el motivo ('fin de semana' | 'no lectivo') o null si es lectivo. */
+function motivoDiaNoLectivo(fechaStr){
+  if(!fechaStr) return null;
+  const d = new Date(`${fechaStr}T12:00:00`);
+  if(Number.isNaN(d.getTime())) return null;
+  const dow = d.getDay();
+  if(dow === 0 || dow === 6) return 'fin de semana';
+  return Object.prototype.hasOwnProperty.call(cachedDiasNoLectivos, fechaStr) ? 'no lectivo' : null;
+}
+window.validarNpFecha = () => {
+  const inp = $('npFecha'); const hint = $('npFechaHint');
+  if(!inp || !hint) return;
+  const motivo = motivoDiaNoLectivo(inp.value);
+  if(motivo){
+    hint.style.display = 'block';
+    hint.textContent = motivo === 'fin de semana'
+      ? 'No se pueden imponer partes en sábado ni en domingo.'
+      : 'Esa fecha es un día no lectivo del calendario escolar: no se pueden imponer partes.';
+  } else {
+    hint.style.display = 'none';
+    hint.textContent = '';
+  }
+};
+
 window.guardarParte = async () => {
   const alumnoId = $('npAlumno').value;
   if(!alumnoId){ toast('Selecciona un alumno/a','error'); return; }
@@ -2628,6 +2668,9 @@ window.guardarParte = async () => {
   if(!conductaId){ toast('Selecciona la conducta tipificada','error'); return; }
   const fecha = $('npFecha').value; const hora = $('npHora').value;
   if(!fecha){ toast('Indica la fecha de la incidencia','error'); return; }
+  const motivoNoLectivo = motivoDiaNoLectivo(fecha);
+  if(motivoNoLectivo === 'fin de semana'){ toast('No se pueden imponer partes en sábado ni en domingo','error'); return; }
+  if(motivoNoLectivo === 'no lectivo'){ toast('No se pueden imponer partes en un día no lectivo (calendario escolar)','error'); return; }
   let ubicacion = $('npUbicacion').value.trim();
   if(!ubicacion){ toast('Indica la ubicación de los hechos','error'); return; }
   const descripcion = $('npDescripcion').value.trim();
@@ -3487,10 +3530,9 @@ function renderAlumnado(c){
     </div>` : ''}
 
     ${actingAsTutor ? `
-    <div class="card" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4);border-color:var(--c-success)">
-      <div class="card-title">
-        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir alumno/a a mi tutoría (${escapeHtml(effTutoriaGrupo||'')})</span>
-      </div>
+    <details class="acc-card" data-acc-group="alumnado" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4);border-color:var(--c-success)">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir alumno/a a mi tutoría (${escapeHtml(effTutoriaGrupo||'')})</summary>
+      <div class="acc-body">
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Como tutor/a del grupo <strong>${escapeHtml(effTutoriaGrupo||'')}</strong>, puedes dar de alta a nuevos alumnos/as (incorporaciones) o eliminar a los que causan baja. Solo puedes modificar el alumnado de tu grupo.</p>
       <div class="form-row">
         <div class="form-group" style="flex:2;margin:0">
@@ -3504,13 +3546,13 @@ function renderAlumnado(c){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Añadir a ${escapeHtml(effTutoriaGrupo||'mi tutoría')}
       </button>
-    </div>` : ''}
+      </div>
+    </details>` : ''}
 
     ${canDeleteGroups && grupos.length > 0 ? `
-    <div class="card" style="background:#fdf3d8;border-color:#e8c956">
-      <div class="card-title">
-        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar grupo completo</span>
-      </div>
+    <details class="acc-card" data-acc-group="alumnado" style="background:#fdf3d8;border-color:#e8c956">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar grupo completo</summary>
+      <div class="acc-body">
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Pulsa un grupo para eliminar <strong>todo su alumnado del curso activo</strong>. Útil antes de reimportar un grupo actualizado desde Séneca. El alumnado de cursos anteriores está archivado y no se puede eliminar.</p>
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group" style="margin:0">
@@ -3526,13 +3568,13 @@ function renderAlumnado(c){
         </div>
       </div>
       <button class="btn btn-danger btn-sm" onclick="eliminarGrupoCompleto()">Eliminar alumnado seleccionado</button>
-    </div>` : ''}
+      </div>
+    </details>` : ''}
 
     ${canImport ? `
-    <div class="card" style="background:linear-gradient(135deg,#f0f6fc,#e0eef9);border-color:var(--c-info)">
-      <div class="card-title">
-        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> Importar alumnado desde Séneca</span>
-      </div>
+    <details class="acc-card" data-acc-group="alumnado" style="background:linear-gradient(135deg,#f0f6fc,#e0eef9);border-color:var(--c-info)">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> Importar alumnado desde Séneca</summary>
+      <div class="acc-body">
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Sube el archivo Excel (<code>.xls</code> o <code>.xlsx</code>) exportado desde Séneca. Se extraerá el grupo de cada pestaña. El alumnado existente en el mismo grupo y curso será actualizado.</p>
       <div class="form-group">
         <label>Curso escolar que se va a importar <span class="required">*</span></label>
@@ -3545,11 +3587,13 @@ function renderAlumnado(c){
         <div class="form-hint">Formato esperado: una columna "Alumno/a" con los nombres completos. Cada pestaña del Excel representa un grupo (1º A, 2º B, etc.).</div>
       </div>
       <button class="btn btn-primary" onclick="procesarImportExcel()">Procesar archivo</button>
-    </div>` : ''}
+      </div>
+    </details>` : ''}
 
-    <div class="card">
-      <div class="card-title">
-        Listado de alumnado
+    <details class="acc-card" data-acc-group="alumnado">
+      <summary>Listado de alumnado</summary>
+      <div class="acc-body">
+      <div class="flex" style="margin-bottom:12px">
         ${canDeleteGroups && grupos.length > 0 ? '<button class="btn btn-sm btn-ghost" onclick="limpiarAlumnadoGrupo()" title="Eliminación avanzada por grupo/curso">Limpiar grupo (avanzado)</button>' : ''}
       </div>
       <div class="toolbar" style="margin:0 0 12px">
@@ -3573,7 +3617,8 @@ function renderAlumnado(c){
         </div>
       </div>`}
       <div id="aluList"></div>
-    </div>
+      </div>
+    </details>
   `;
   // Exponer canEditGroup y visibleStudents para filterAlu
   window._canEditGroup = canEditGroup;
@@ -3922,12 +3967,9 @@ function renderUsuarios(c){
     <div class="page-title">Gestión de usuarios</div>
     <div class="page-subtitle">${Object.keys(cachedUsers).length} usuarios registrados</div>
 
-    <details style="margin-bottom:14px;border:1px solid var(--c-border);border-radius:var(--radius-lg);overflow:hidden;background:var(--c-surface)">
-      <summary style="padding:14px 18px;cursor:pointer;font-size:15px;font-weight:600;color:var(--c-text);display:flex;align-items:center;gap:8px;list-style:none;background:linear-gradient(135deg,#f0f6fc,#e0eef9)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-info)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Crear nuevo usuario
-      </summary>
-      <div style="padding:18px">
+    <details class="acc-card" data-acc-group="usuarios" style="background:linear-gradient(135deg,#f0f6fc,#e0eef9)">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;stroke:var(--c-info)"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Crear nuevo usuario</summary>
+      <div class="acc-body">
         <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px">Crea una cuenta para un profesor o tutor. Podrá iniciar sesión inmediatamente con el usuario y contraseña que indiques.</p>
         <div class="form-row">
           <div class="form-group">
@@ -3971,12 +4013,9 @@ function renderUsuarios(c){
       </div>
     </details>
 
-    <details style="margin-bottom:14px;border:1px solid var(--c-border);border-radius:var(--radius-lg);overflow:hidden;background:var(--c-surface)">
-      <summary style="padding:14px 18px;cursor:pointer;font-size:15px;font-weight:600;color:var(--c-text);display:flex;align-items:center;gap:8px;list-style:none;background:linear-gradient(135deg,#e3f4ea,#f0fdf4)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Importar usuarios desde Excel
-      </summary>
-      <div style="padding:18px">
+    <details class="acc-card" data-acc-group="usuarios" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4)">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;stroke:var(--c-success)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar usuarios desde Excel</summary>
+      <div class="acc-body">
         <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px;line-height:1.5">Importa varios usuarios a la vez desde un archivo Excel. El archivo debe tener una fila por usuario con las siguientes columnas (los encabezados de la primera fila se usan para identificar cada campo):</p>
         <div style="background:#f7f9fc;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--c-text-soft);line-height:1.6">
           <strong>Columnas obligatorias:</strong><br>
@@ -3996,10 +4035,10 @@ function renderUsuarios(c){
       </div>
     </details>
 
-    <div class="card">
-      <div class="card-title">
-        Listado de usuarios
-        <div class="toolbar" style="margin:0">
+    <details class="acc-card" data-acc-group="usuarios">
+      <summary>Listado de usuarios</summary>
+      <div class="acc-body">
+      <div class="toolbar" style="margin:0 0 12px">
           <div class="search" style="min-width:200px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="searchUsers" placeholder="Buscar por nombre o usuario..." oninput="renderUsersTable()">
@@ -4010,7 +4049,6 @@ function renderUsuarios(c){
             <option value="tutor">Tutores</option>
             <option value="profesor">Profesores</option>
           </select>
-        </div>
       </div>
       <div class="table-wrap">
         <table>
@@ -4020,7 +4058,8 @@ function renderUsuarios(c){
           <tbody id="usersTableBody"></tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </details>
   `;
   renderUsersTable();
 }
@@ -4422,11 +4461,25 @@ function renderConfiguracion(c){
     <div class="page-title">Configuración</div>
     <div class="page-subtitle">Personaliza los listados que usa la aplicación</div>
 
-    <div class="card">
-      <div class="card-title">
-        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Ubicaciones predefinidas</span>
-        <span class="chip">${ubicaciones.length} ubicaciones</span>
+    <details class="acc-card" data-acc-group="configuracion" style="background:linear-gradient(135deg,#fdf3d8,#fef9e7);border-color:#e8a93c">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg> Calendario escolar <span class="chip" style="margin-left:6px">${Object.keys(cachedDiasNoLectivos).length} días no lectivos</span></summary>
+      <div class="acc-body">
+        <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px;line-height:1.5">Importa los días no lectivos del centro (festivos, vacaciones…) a partir de un archivo JSON como <code>GestorPermisos_DiasNoLectivos.json</code>. En esos días, y en sábados y domingos, no se podrán imponer partes.</p>
+        <div class="form-group">
+          <label>Archivo JSON de días no lectivos</label>
+          <input type="file" id="dnlFile" accept=".json" class="form-control" style="padding:8px">
+        </div>
+        <div class="flex gap-8 flex-wrap">
+          <button class="btn btn-primary" onclick="importarDiasNoLectivos()">Importar días no lectivos</button>
+          <button class="btn btn-secondary" onclick="vaciarDiasNoLectivos()">Vaciar calendario</button>
+        </div>
+        <div id="dnlResult" style="margin-top:12px"></div>
       </div>
+    </details>
+
+    <details class="acc-card" data-acc-group="configuracion">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Ubicaciones predefinidas <span class="chip" style="margin-left:6px">${ubicaciones.length} ubicaciones</span></summary>
+      <div class="acc-body">
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px;line-height:1.5">Estas son las ubicaciones que aparecerán como sugerencias al rellenar el campo "Ubicación de los hechos" en un parte. El profesorado podrá elegir una de la lista o escribir una propia. Los cambios se sincronizan en tiempo real con todos los dispositivos.</p>
 
       <div id="ubicacionesEditor">
@@ -4452,7 +4505,8 @@ function renderConfiguracion(c){
         <button class="btn btn-secondary" onclick="restablecerUbicaciones()">Restablecer por defecto</button>
       </div>
       <div class="form-hint" id="cambiosPendientes" style="margin-top:8px;display:none;color:var(--c-warning);font-weight:500"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay cambios sin guardar. Pulsa "Guardar cambios" para aplicarlos.</div>
-    </div>
+      </div>
+    </details>
 
     <div class="card" style="background:#f7f9fc">
       <div class="card-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Información</div>
@@ -4468,6 +4522,52 @@ function renderConfiguracion(c){
 window.marcarCambioUbicacion = () => {
   const el = $('cambiosPendientes');
   if(el) el.style.display = 'block';
+};
+
+/* ===== Calendario escolar (días no lectivos) =====
+ * Se almacenan en convivencia_iesvdv/config/diasNoLectivos como un objeto
+ * { 'YYYY-MM-DD': {categorias:[…], detalle:''} }. En esos días no se
+ * pueden imponer partes. El formato de entrada es el del archivo
+ * GestorPermisos_DiasNoLectivos.json (app/tipo/curso/dias[]). */
+window.importarDiasNoLectivos = async () => {
+  const inp = $('dnlFile');
+  if(!inp || !inp.files || inp.files.length === 0){ toast('Selecciona un archivo JSON','error'); return; }
+  let data;
+  try{
+    data = JSON.parse(await inp.files[0].text());
+  }catch(e){
+    toast('El archivo no es un JSON válido: ' + e.message,'error'); return;
+  }
+  // Aceptar tanto el formato completo ({dias:[{fecha,…}]}) como un array suelto
+  const lista = Array.isArray(data) ? data : (Array.isArray(data.dias) ? data.dias : null);
+  if(!lista){ toast('El archivo no contiene una lista de días (campo "dias")','error'); return; }
+  const nuevos = {};
+  let invalidos = 0;
+  lista.forEach(d => {
+    const f = (d && typeof d.fecha === 'string') ? d.fecha : null;
+    if(!f || !/^\d{4}-\d{2}-\d{2}$/.test(f)){ invalidos++; return; }
+    nuevos[f] = { categorias: Array.isArray(d.categorias) ? d.categorias : [], detalle: typeof d.detalle === 'string' ? d.detalle : '' };
+  });
+  if(Object.keys(nuevos).length === 0){ toast('No se ha encontrado ningún día válido en el archivo','error'); return; }
+  try{
+    await update(ref(db, `${DB_ROOT}/config/diasNoLectivos`), nuevos);
+    toast(`${Object.keys(nuevos).length} día(s) no lectivos importados${invalidos ? ` (${invalidos} entradas inválidas ignoradas)` : ''}`,'success');
+    inp.value = '';
+  }catch(e){
+    toast('Error al importar: ' + e.message,'error');
+  }
+};
+
+window.vaciarDiasNoLectivos = async () => {
+  const n = Object.keys(cachedDiasNoLectivos).length;
+  if(n === 0){ toast('El calendario escolar ya está vacío','info'); return; }
+  if(!confirm(`¿Vaciar el calendario escolar? Se eliminarán los ${n} días no lectivos importados (sábados y domingos seguirán bloqueados).`)) return;
+  try{
+    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos`), null);
+    toast('Calendario escolar vaciado','success');
+  }catch(e){
+    toast('Error: ' + e.message,'error');
+  }
 };
 
 window.anadirUbicacion = () => {
@@ -4570,8 +4670,9 @@ function renderCursos(c){
     <div class="page-title">Gestión de cursos escolares</div>
     <div class="page-subtitle">Curso activo: <strong style="color:var(--c-primary)">${escapeHtml(cursoActivo)}</strong></div>
 
-    <div class="card" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4);border-color:var(--c-success)">
-      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg> Curso activo</span></div>
+    <details class="acc-card" data-acc-group="cursos" style="background:linear-gradient(135deg,#e3f4ea,#f0fdf4);border-color:var(--c-success)">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg> Curso activo</summary>
+      <div class="acc-body">
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:10px;line-height:1.5">El curso activo determina en qué curso escolar se registran los partes y las importaciones de alumnado. Todos los usuarios verán este curso en la aplicación.</p>
       <div class="form-group" style="margin:0">
         <select id="cursoActivoSel" class="form-control" style="max-width:300px">
@@ -4579,11 +4680,13 @@ function renderCursos(c){
         </select>
       </div>
       <button class="btn btn-success btn-sm" style="margin-top:8px" onclick="cambiarCursoActivo()">Cambiar curso activo</button>
-    </div>
+      </div>
+    </details>
 
-    <div class="card">
-      <div class="card-title">
-        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Cursos disponibles (${cachedCursos.length})</span>
+    <details class="acc-card" data-acc-group="cursos">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Cursos disponibles (${cachedCursos.length})</summary>
+      <div class="acc-body">
+      <div class="flex" style="justify-content:flex-end;margin-bottom:10px">
         <button class="btn btn-primary btn-sm" onclick="crearCursoModal()">+ Nuevo curso</button>
       </div>
       <div class="table-wrap">
@@ -4610,7 +4713,8 @@ function renderCursos(c){
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </details>
 
     <div class="card" style="background:#f7f9fc;font-size:13px;color:var(--c-text-muted);line-height:1.5">
       <strong style="color:var(--c-text-soft)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Información</strong><br>
@@ -4830,10 +4934,9 @@ window.updateCursoIndicator = () => {
  * roles:
  * - Curso escolar: FIJADO al curso activo (aislamiento por año: los
  *   cursos vencidos están archivados y no se pueden consultar).
- * - Período: todo el curso, o un tramo fijo (hoy, semana, quincena, mes,
- *   trimestre) o personalizado por el usuario (desde/hasta).
- * - Búsqueda libre (alumno, profesor o conducta) y filtros rápidos de
- *   tipo (CCNC/CGPC) y grupo, heredados de
+ * - Período: todo el curso, o un tramo fijo (hoy, semana, semana anterior,
+ *   quincena, mes, trimestre) o personalizado por el usuario (desde/hasta).
+ * - Filtros rápidos de tipo (CCNC/CGPC) y grupo, heredados de
  *   la antigua sección "Todos los partes".
  * El filtro vive en informesFiltro y se aplica a TODOS los elementos de
  * la sección (estadísticas, listado, desplegables y PDF). */
@@ -4843,7 +4946,8 @@ const INFORMES_PERIODOS = {
   curso: 'Todo el curso',
   hoy: 'Hoy',
   '7d': 'Últimos 7 días',
-  semana: 'Esta semana (lunes-domingo)',
+  semana: 'Esta semana (lunes a hoy)',
+  semanaAnt: 'Semana anterior (lunes a viernes)',
   '15d': 'Últimos 15 días (quincena)',
   mes: 'Este mes',
   mesAnt: 'Mes anterior',
@@ -4881,9 +4985,17 @@ function informesRango(){
     case '7d': return { desde: dia(ahora - 6 * 86400000), hasta: finDia(ahora) };
     case '15d': return { desde: dia(ahora - 14 * 86400000), hasta: finDia(ahora) };
     case 'semana': {
+      // Del lunes de la semana en curso hasta hoy
       const d = new Date();
       const lunes = d.getTime() - ((d.getDay() + 6) % 7) * 86400000;
-      return { desde: dia(lunes), hasta: finDia(lunes + 6 * 86400000) };
+      return { desde: dia(lunes), hasta: finDia(ahora) };
+    }
+    case 'semanaAnt': {
+      // Del lunes al viernes de la semana anterior
+      const d = new Date();
+      const lunesEsta = d.getTime() - ((d.getDay() + 6) % 7) * 86400000;
+      const lunesAnt = lunesEsta - 7 * 86400000;
+      return { desde: dia(lunesAnt), hasta: finDia(lunesAnt + 4 * 86400000) };
     }
     case 'mes': {
       const d = new Date();
@@ -4920,7 +5032,7 @@ const informesPeriodoFilename = () => {
     const f = (ms) => { const d = new Date(ms); return String(d.getDate()).padStart(2,'0') + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + d.getFullYear(); };
     return `del_${f(r.desde)}_al_${f(r.hasta)}`;
   }
-  const nombres = { hoy:'hoy', '7d':'ultimos-7-dias', '15d':'ultimos-15-dias', semana:'semana-actual', mes:'mes-actual', mesAnt:'mes-anterior', trimestre:'trimestre-actual', trimestreAnt:'trimestre-anterior' };
+  const nombres = { hoy:'hoy', '7d':'ultimos-7-dias', '15d':'ultimos-15-dias', semana:'semana-actual', semanaAnt:'semana-anterior', mes:'mes-actual', mesAnt:'mes-anterior', trimestre:'trimestre-actual', trimestreAnt:'trimestre-anterior' };
   return nombres[informesFiltro.periodo] || 'periodo';
 };
 
@@ -4999,10 +5111,6 @@ function informesFiltrosHTML(scopeList, mostrarGrupoFiltro){
           </div>
           <button class="btn btn-secondary" onclick="aplicarRangoCustom()">Aplicar</button>
         </div>
-        <div class="form-group" style="margin-bottom:0;flex:1;min-width:190px">
-          <label style="font-size:12px;color:var(--c-text-muted)">Búsqueda</label>
-          <input type="text" id="infBuscar" class="form-control" placeholder="Alumno, profesor, conducta..." value="${escapeHtml(informesFiltro.q || '')}" oninput="infBuscarChange()">
-        </div>
         <div class="form-group" style="margin-bottom:0;min-width:130px">
           <label style="font-size:12px;color:var(--c-text-muted)">Tipo</label>
           <select id="infTipo" class="form-control">
@@ -5063,19 +5171,14 @@ window.aplicarRangoCustom = () => {
 window.resetInformesFiltro = () => {
   informesFiltro = { curso: null, periodo: 'curso', desde: null, hasta: null, q: '', tipo: '', grupo: '' };
   // El panel no se repinta: devolver sus controles al estado inicial
-  const valores = { infBuscar:'', infTipo:'', infGrupo:'', infPeriodo:'curso', infDesde:'', infHasta:'' };
+  const valores = { infTipo:'', infGrupo:'', infPeriodo:'curso', infDesde:'', infHasta:'' };
   Object.entries(valores).forEach(([id, v]) => { const el = $(id); if(el) el.value = v; });
   const rc = $('infRangoCustom'); if(rc) rc.style.display = 'none';
   refrescarGrupoOpciones();
   refrescarInformesResultados();
 };
 /* Filtros rápidos heredados de la antigua sección "Todos los partes":
- * se guardan en informesFiltro y refrescan solo la zona de resultados
- * (el panel NO se repinta, así el campo de búsqueda no pierde el foco). */
-window.infBuscarChange = () => {
-  informesFiltro.q = $('infBuscar') ? $('infBuscar').value : '';
-  refrescarInformesResultados();
-};
+ * se guardan en informesFiltro y refrescan solo la zona de resultados. */
 window.infTipoChange = () => {
   informesFiltro.tipo = $('infTipo') ? $('infTipo').value : '';
   refrescarInformesResultados();
@@ -5165,19 +5268,30 @@ function informesFiltrosFilenameSuffix(){
   if(informesFiltro.grupo) s += `_grupo-${sanitizeFilename(informesFiltro.grupo)}`;
   return s;
 }
-/* Repinta SOLO la zona de resultados de la vista de informes
- * (#infResultados) al cambiar cualquier filtro: el panel de filtros
- * permanece intacto (la búsqueda no pierde el foco) y las selecciones
- * de los desplegables de informes se conservan. */
+/* Repinta SOLO las zonas de resultados de la vista de informes
+ * (#infResultadosMain, dentro del acordeón principal, y
+ * #infResultadosResto, fuera) al cambiar cualquier filtro: el panel de
+ * filtros permanece intacto y las selecciones de los desplegables de
+ * informes se conservan. */
 window.refrescarInformesResultados = () => {
-  const el = $('infResultados');
-  if(currentView !== 'informes' || !el) return;
+  const main = $('infResultadosMain');
+  const resto = $('infResultadosResto');
+  if(currentView !== 'informes' || !main || !resto) return;
   const scope = informesScopeList();
-  const snap = snapshotInformesSelects(el);
+  const snap = { ...snapshotInformesSelects(main), ...snapshotInformesSelects(resto) };
   const effRole = getEffectiveRole();
-  if(effRole === 'profesor') el.innerHTML = informesResultadosProfesorHTML(scope);
-  else if(effRole === 'tutor') el.innerHTML = informesResultadosTutorHTML(scope);
-  else el.innerHTML = informesResultadosAdminHTML(scope);
+  if(effRole === 'profesor'){
+    main.innerHTML = informesResultadosProfesorMainHTML(scope);
+    resto.innerHTML = informesResultadosProfesorRestoHTML(scope);
+  }
+  else if(effRole === 'tutor'){
+    main.innerHTML = informesResultadosTutorMainHTML(scope);
+    resto.innerHTML = informesResultadosTutorHTML(scope);
+  }
+  else {
+    main.innerHTML = informesResultadosAdminMainHTML(scope);
+    resto.innerHTML = informesResultadosAdminHTML(scope);
+  }
   if(effRole === 'profesor'){ infProfAlumnoSetup(); infProfGrupoSetup(); }
   else if(effRole === 'tutor'){ infTutorAlumnoSetup(); }
   else { infAdminAlumnoSetup(); infAdminGrupoSetup(); infAdminProfesorSetup(); }
@@ -5367,20 +5481,48 @@ const sanitizeFilename = (text) => {
     .replace(/^_+|_+$/g, '');
 };
 
+/* Tarjeta acordeón principal de Informes: encierra el panel de filtros y
+ * la estadística general (y, en admin, el listado "Todos los partes"),
+ * inicialmente replegada. El resto de tarjetas se renderiza en
+ * #infResultadosResto, fuera del acordeón. */
+function informesBloquePrincipalHTML(scope, mostrarGrupoFiltro){
+  return `
+    <details class="acc-card">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Consulta del informe: filtros y estadística</summary>
+      <div class="acc-body">
+        ${informesFiltrosHTML(scope, mostrarGrupoFiltro)}
+        <div id="infResultadosMain"></div>
+      </div>
+    </details>
+    <div id="infResultadosResto"></div>`;
+}
+
 /* === INFORMES DEL PROFESOR === */
 function renderInformesProfesor(c, cursoActivo){
   c.innerHTML = `
     <div class="page-title">Informes</div>
     <div class="page-subtitle">Estadísticas de tus partes · Curso ${escapeHtml(informesCursoSel())}</div>
-    ${informesFiltrosHTML(informesScopeList())}
-    <div id="infResultados"></div>
+    ${informesBloquePrincipalHTML(informesScopeList())}
   `;
   setupInformesFiltros();
   refrescarInformesResultados();
 }
-/* Cuerpo de la vista de informes del profesor (la zona #infResultados):
- * se recalcula al cambiar cualquier filtro, sin repintar el panel. */
-function informesResultadosProfesorHTML(scope){
+/* Zona principal (dentro del acordeón): resumen general. */
+function informesResultadosProfesorMainHTML(scope){
+  const myPartes = scope;
+  const partesCurso = filtrarPartesInforme(myPartes);
+  return `
+    <div class="card">
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Resumen general</span></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${partesCurso.length}</div><div class="stat-label">Total partes</div></div>        <div class="stat-card accent"><div class="stat-value">${partesCurso.filter(p=>p.tipo==='CGPC').length}</div><div class="stat-label">CGPC</div></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar resumen a PDF</button>
+    </div>
+  `;
+}
+/* Zona secundaria (fuera del acordeón): por alumno, por grupo e iPasen. */
+function informesResultadosProfesorRestoHTML(scope){
   const myPartes = scope;
   // Se aplican los filtros de la vista (curso + período + búsqueda/tipo/grupo)
   const partesCurso = filtrarPartesInforme(myPartes);
@@ -5391,14 +5533,6 @@ function informesResultadosProfesorHTML(scope){
   const gruposUnicos = [...new Set(partesCurso.map(p => p.grupo).filter(Boolean))].sort();
 
   return `
-    <div class="card">
-      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Resumen general</span></div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value">${partesCurso.length}</div><div class="stat-label">Total partes</div></div>        <div class="stat-card accent"><div class="stat-value">${partesCurso.filter(p=>p.tipo==='CGPC').length}</div><div class="stat-label">CGPC</div></div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="generarPDFProfesorGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar resumen a PDF</button>
-    </div>
-
     <div class="card">
       <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Por alumno</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${partesCurso.length === 0 ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período de arriba.' : 'Selecciona un alumno para ver el detalle de sus partes y exportarlo a PDF.'}</p>
@@ -5697,13 +5831,26 @@ function renderInformesTutor(c, cursoActivo){
   c.innerHTML = `
     <div class="page-title">Informes</div>
     <div class="page-subtitle">Tutoría: ${escapeHtml(tutoriaGrupo)} · Curso ${escapeHtml(informesCursoSel())}</div>
-    ${informesFiltrosHTML(informesScopeList(), false)}
-    <div id="infResultados"></div>
+    ${informesBloquePrincipalHTML(informesScopeList(), false)}
   `;
   setupInformesFiltros();
   refrescarInformesResultados();
 }
-/* Cuerpo de la vista de informes del tutor (la zona #infResultados). */
+/* Zona principal (dentro del acordeón): estadística general de la tutoría. */
+function informesResultadosTutorMainHTML(scope){
+  const partesTutoria = filtrarPartesInforme(scope);
+  const alumnosUnicos = [...new Set(partesTutoria.map(p => p.alumnoNombre).filter(Boolean))].sort();
+  return `
+    <div class="card">
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Estadística general de la tutoría</span></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${partesTutoria.length}</div><div class="stat-label">Total partes</div></div>        <div class="stat-card accent"><div class="stat-value">${alumnosUnicos.length}</div><div class="stat-label">Alumnos con partes</div></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="generarPDFTutorGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar informe general a PDF</button>
+    </div>
+  `;
+}
+/* Cuerpo de la vista de informes del tutor (zona secundaria). */
 function informesResultadosTutorHTML(scope){
   const tutoriaGrupo = getEffectiveTutoriaGrupo();
   const partesTutoriaBase = scope;
@@ -5712,14 +5859,6 @@ function informesResultadosTutorHTML(scope){
   const alumnosUnicos = [...new Set(partesTutoria.map(p => p.alumnoNombre).filter(Boolean))].sort();
 
   return `
-    <div class="card">
-      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Estadística general de la tutoría</span></div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value">${partesTutoria.length}</div><div class="stat-label">Total partes</div></div>        <div class="stat-card accent"><div class="stat-value">${alumnosUnicos.length}</div><div class="stat-label">Alumnos con partes</div></div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="generarPDFTutorGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar informe general a PDF</button>
-    </div>
-
     <div class="card">
       <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Informe por alumno (orden cronológico inverso)</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${partesTutoria.length === 0 ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período de arriba.' : 'Selecciona un alumno para ver todos sus partes y exportarlos a PDF.'}</p>
@@ -5839,16 +5978,42 @@ function renderInformesAdmin(c, cursoActivo){
   c.innerHTML = `
     <div class="page-title">Informes</div>
     <div class="page-subtitle">Estadísticas y consultas del centro · Curso ${escapeHtml(informesCursoSel())}</div>
-    ${informesFiltrosHTML(informesScopeList())}
-    <div id="infResultados"></div>
+    ${informesBloquePrincipalHTML(informesScopeList())}
     ${diagnosticoPartesHTML()}
   `;
   setupInformesFiltros();
   refrescarInformesResultados();
 }
-/* Cuerpo de la vista de informes del admin (la zona #infResultados):
- * estadísticas generales, listado completo de partes (la antigua
- * sección "Todos") e informes por alumno, grupo y profesor. */
+/* Zona principal (dentro del acordeón): estadística general del centro y
+ * el listado "Todos los partes", que es a su vez un acordeón replegado. */
+function informesResultadosAdminMainHTML(scope){
+  const todasPartes = filtrarPartesInforme(scope);
+  const listado = [...todasPartes].sort((a,b)=>(fechaIncidenteTs(b)||0)-(fechaIncidenteTs(a)||0));
+  const sinResultados = todasPartes.length === 0;
+  return `
+    <div class="card">
+      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Estadística general del centro</span></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${todasPartes.length}</div><div class="stat-label">Total partes</div></div>        <div class="stat-card accent"><div class="stat-value">${todasPartes.filter(p=>p.tipo==='CGPC').length}</div><div class="stat-label">CGPC</div></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="generarPDFAdminGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar informe general a PDF</button>
+    </div>
+
+    <details class="acc-card">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Todos los partes (${listado.length})</summary>
+      <div class="acc-body">
+        <div class="flex gap-8 flex-wrap" style="margin-bottom:10px">
+          <button class="btn btn-primary btn-sm" onclick="generarPDFTodosPartes()" title="Genera un informe A4 en PDF con los partes que se muestran ahora mismo en esta lista (respeta todos los filtros aplicados)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="generarInformeHTML()" title="Genera un informe interactivo en HTML: portada con el período, una pestaña por unidad del centro y filtro CCNC/CGPC en cada página. Se descarga como archivo .html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Informe HTML</button>
+        </div>
+        <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período, o quita filtros.' : 'Listado completo del curso activo en orden cronológico inverso. Pulsa un parte para ver su detalle; la exportación a PDF respeta todos los filtros aplicados.'}</p>
+        ${listado.length === 0 ? `<div class="empty-state"><p>No hay partes que coincidan con el filtro.</p></div>` : listado.map(p => renderParteCard(p)).join('')}
+      </div>
+    </details>
+  `;
+}
+/* Cuerpo de la vista de informes del admin (zona secundaria):
+ * informes por alumno, grupo y profesor. */
 function informesResultadosAdminHTML(scope){
   // Se aplican los filtros de la vista (curso + período + búsqueda/tipo/grupo)
   const todasPartes = filtrarPartesInforme(scope);
@@ -5859,24 +6024,6 @@ function informesResultadosAdminHTML(scope){
   const sinResultados = todasPartes.length === 0;
 
   return `
-    <div class="card">
-      <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/><path d="M3 20h18"/></svg> Estadística general del centro</span></div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value">${todasPartes.length}</div><div class="stat-label">Total partes</div></div>        <div class="stat-card accent"><div class="stat-value">${todasPartes.filter(p=>p.tipo==='CGPC').length}</div><div class="stat-label">CGPC</div></div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="generarPDFAdminGeneral()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar informe general a PDF</button>
-    </div>
-
-    <div class="card card-wide">
-      <div class="card-title">
-        <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg> Todos los partes (${listado.length})</span>
-        <button class="btn btn-primary btn-sm" onclick="generarPDFTodosPartes()" title="Genera un informe A4 en PDF con los partes que se muestran ahora mismo en esta lista (respeta todos los filtros aplicados)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button>
-        <button class="btn btn-secondary btn-sm" onclick="generarInformeHTML()" title="Genera un informe interactivo en HTML: portada con el período, una pestaña por unidad del centro y filtro CCNC/CGPC en cada página. Se descarga como archivo .html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Informe HTML</button>
-      </div>
-      <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período o la búsqueda, o quita filtros.' : 'Listado completo del curso activo en orden cronológico inverso. Pulsa un parte para ver su detalle; la exportación a PDF respeta todos los filtros aplicados.'}</p>
-      ${listado.length === 0 ? `<div class="empty-state"><p>No hay partes que coincidan con el filtro.</p></div>` : listado.map(p => renderParteCard(p)).join('')}
-    </div>
-
     <div class="card">
       <div class="card-title"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Informe por alumno</span></div>
       <p style="font-size:13px;color:var(--c-text-muted);margin-bottom:10px">${sinResultados ? 'No hay partes que coincidan con los filtros seleccionados: prueba a cambiar el período de arriba.' : 'Los partes del alumno se muestran en orden cronológico inverso.'}</p>
@@ -6615,6 +6762,11 @@ window.generarPDFAdminProfesor = (profesor) => {
 
 /* ===== Notifications ===== */
 function renderNotifications(c){
+  // La sección de Avisos es exclusiva del perfil de tutor
+  if(getEffectiveRole() !== 'tutor'){
+    c.innerHTML = `<div class="page-title">Avisos</div><div class="empty-state"><p>Los avisos solo están disponibles para el perfil de tutor.</p></div>`;
+    return;
+  }
   const notifs = cachedNotifications;
   c.innerHTML = `
     <div class="page-title">Notificaciones</div>
