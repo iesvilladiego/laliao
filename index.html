@@ -3549,28 +3549,6 @@ function renderAlumnado(c){
       </div>
     </details>` : ''}
 
-    ${canDeleteGroups && grupos.length > 0 ? `
-    <details class="acc-card" data-acc-group="alumnado" style="background:#fdf3d8;border-color:#e8c956">
-      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar grupo completo</summary>
-      <div class="acc-body">
-      <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Pulsa un grupo para eliminar <strong>todo su alumnado del curso activo</strong>. Útil antes de reimportar un grupo actualizado desde Séneca. El alumnado de cursos anteriores está archivado y no se puede eliminar.</p>
-      <div class="form-row" style="margin-bottom:10px">
-        <div class="form-group" style="margin:0">
-          <select id="eliminarGrupoSel" class="form-control">
-            ${grupos.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group" style="margin:0">
-          <select id="eliminarCursoSel" class="form-control">
-            <option value="">Todos los cursos</option>
-            ${[...new Set(visibleStudents.map(s=>s.curso).filter(Boolean))].sort().map(curso => `<option value="${escapeHtml(curso)}">${escapeHtml(curso)}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <button class="btn btn-danger btn-sm" onclick="eliminarGrupoCompleto()">Eliminar alumnado seleccionado</button>
-      </div>
-    </details>` : ''}
-
     ${canImport ? `
     <details class="acc-card" data-acc-group="alumnado" style="background:linear-gradient(135deg,#f0f6fc,#e0eef9);border-color:var(--c-info)">
       <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> Importar alumnado desde Séneca</summary>
@@ -3619,6 +3597,28 @@ function renderAlumnado(c){
       <div id="aluList"></div>
       </div>
     </details>
+
+    ${canDeleteGroups && grupos.length > 0 ? `
+    <details class="acc-card" data-acc-group="alumnado" style="background:#fdf3d8;border-color:#e8c956">
+      <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar grupo completo</summary>
+      <div class="acc-body">
+      <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:12px">Pulsa un grupo para eliminar <strong>todo su alumnado del curso activo</strong>. Útil antes de reimportar un grupo actualizado desde Séneca. El alumnado de cursos anteriores está archivado y no se puede eliminar.</p>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group" style="margin:0">
+          <select id="eliminarGrupoSel" class="form-control">
+            ${grupos.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <select id="eliminarCursoSel" class="form-control">
+            <option value="">Todos los cursos</option>
+            ${[...new Set(visibleStudents.map(s=>s.curso).filter(Boolean))].sort().map(curso => `<option value="${escapeHtml(curso)}">${escapeHtml(curso)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="eliminarGrupoCompleto()">Eliminar alumnado seleccionado</button>
+      </div>
+    </details>` : ''}
   `;
   // Exponer canEditGroup y visibleStudents para filterAlu
   window._canEditGroup = canEditGroup;
@@ -3967,6 +3967,32 @@ function renderUsuarios(c){
     <div class="page-title">Gestión de usuarios</div>
     <div class="page-subtitle">${Object.keys(cachedUsers).length} usuarios registrados</div>
 
+    <details class="acc-card" data-acc-group="usuarios">
+      <summary>Listado de usuarios</summary>
+      <div class="acc-body">
+      <div class="toolbar" style="margin:0 0 12px">
+          <div class="search" style="min-width:200px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchUsers" placeholder="Buscar por nombre o usuario..." oninput="renderUsersTable()">
+          </div>
+          <select id="filterRolUsers" onchange="renderUsersTable()" style="padding:7px 26px 7px 10px;border:1px solid var(--c-border);border-radius:8px;font-size:16px;background:#fff;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(&quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2352606d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 6px center;background-size:16px">
+            <option value="">Todos los roles</option>
+            <option value="admin">Administradores</option>
+            <option value="tutor">Tutores</option>
+            <option value="profesor">Profesores</option>
+          </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Tutoría</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
+      </div>
+    </details>
+
     <details class="acc-card" data-acc-group="usuarios" style="background:linear-gradient(135deg,#f0f6fc,#e0eef9)">
       <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;stroke:var(--c-info)"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Crear nuevo usuario</summary>
       <div class="acc-body">
@@ -4032,32 +4058,6 @@ function renderUsuarios(c){
         </div>
         <button class="btn btn-success" onclick="importarUsuariosExcel()">Importar usuarios</button>
         <div id="iuResult" style="margin-top:12px"></div>
-      </div>
-    </details>
-
-    <details class="acc-card" data-acc-group="usuarios">
-      <summary>Listado de usuarios</summary>
-      <div class="acc-body">
-      <div class="toolbar" style="margin:0 0 12px">
-          <div class="search" style="min-width:200px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchUsers" placeholder="Buscar por nombre o usuario..." oninput="renderUsersTable()">
-          </div>
-          <select id="filterRolUsers" onchange="renderUsersTable()" style="padding:7px 26px 7px 10px;border:1px solid var(--c-border);border-radius:8px;font-size:16px;background:#fff;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(&quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2352606d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 6px center;background-size:16px">
-            <option value="">Todos los roles</option>
-            <option value="admin">Administradores</option>
-            <option value="tutor">Tutores</option>
-            <option value="profesor">Profesores</option>
-          </select>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Tutoría</th><th>Acciones</th></tr>
-          </thead>
-          <tbody id="usersTableBody"></tbody>
-        </table>
-      </div>
       </div>
     </details>
   `;

@@ -1,7 +1,7 @@
 // Service Worker para LaLiao V2
 // Cachea los recursos principales para funcionamiento offline
 
-const CACHE_NAME = 'laliao-v2-v16';
+const CACHE_NAME = 'laliao-v2-v17';
 const ASSETS = [
   './',
   './index.html',
