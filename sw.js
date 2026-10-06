@@ -1,7 +1,7 @@
 // Service Worker para LaLiao V2
 // Cachea los recursos principales para funcionamiento offline
 
-const CACHE_NAME = 'laliao-v2.24';
+const CACHE_NAME = 'laliao-v2.26';
 const ASSETS = [
   './',
   './index.html',
@@ -28,15 +28,25 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
+      // Las cachés se llaman 'laliao-v2.XX' (con punto): el patrón antiguo
+      // 'laliao-v2-' nunca coincidía y las versiones viejas se acumulaban.
+      // Como caches.match() busca en TODAS las cachés, el HTML obsoleto de
+      // una versión anterior seguía sirviéndose aunque la app "se actualizara".
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME && key.startsWith('laliao-v2-'))
+        keys.filter((key) => key !== CACHE_NAME && key.startsWith('laliao-v'))
           .map((key) => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Fetch: estrategia cache-first para assets locales, network-first para Firebase
+// Fetch:
+//  - Navegación (el HTML de la app): NETWORK-FIRST. Así el usuario recibe
+//    siempre la última versión publicada en cuanto hay conexión; la caché
+//    solo entra como respaldo sin red. Con el cache-first anterior, ver una
+//    actualización exigía (a veces varias) recargas o limpiar datos.
+//  - Resto de assets locales: cache-first, pero leyendo SOLO de la caché de
+//    esta versión (no de cualquier caché antigua que quedara huérfana).
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -55,34 +65,51 @@ self.addEventListener('fetch', (event) => {
   // de la carpeta de la app (el scope del SW). El portal
   // https://iesvilladiego.github.io vive en la raíz del dominio y sus
   // páginas/recursos jamás pasan por este SW, así que ambas PWA pueden
-  // convivir e instalarse por separado sin interferencia.
+  // convivir e instalar por separado sin interferencia.
   const scopePath = new URL(self.registration.scope).pathname;
   if (!url.pathname.startsWith(scopePath)) return;
 
-  // Cache-first para assets locales
-  if (url.origin === self.location.origin) {
+  if (url.origin !== self.location.origin) return;
+
+  const isNavigation = event.request.mode === 'navigate' ||
+    event.request.destination === 'document' ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname === scopePath;
+
+  if (isNavigation) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
+      fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() =>
+        caches.open(CACHE_NAME)
+          .then((cache) => cache.match(event.request))
+          .then((cached) => cached || caches.match('./index.html'))
+      )
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(event.request).then((cached) => {
         if (cached) return cached;
         return fetch(event.request).then((response) => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            cache.put(event.request, clone);
           }
           return response;
-        }).catch(() => {
-          // Fallback: si no hay red ni caché, servir el index.html para SPA
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-          return cached;
         });
       })
-    );
-  }
+    )
+  );
 });
 
-// Permitir que el SW tome control inmediatamente
+// Permitir que el SW tome control inmediato (lo pide el banner de actualización)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

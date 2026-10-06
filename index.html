@@ -544,6 +544,11 @@ details.acc-card>.acc-body{padding:0 18px 18px}
 #toast.success{background:var(--c-success)}
 @media(min-width:900px){#toast{bottom:24px}}
 
+/* Banner de nueva versión disponible (actualización de la PWA) */
+#updateBanner{position:fixed;top:0;left:0;right:0;z-index:1300;display:flex;align-items:center;justify-content:center;gap:12px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:var(--c-primary-dark,#1e3a5f);color:#fff;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lg);flex-wrap:wrap}
+#updateBanner button{border:0;cursor:pointer;font:inherit;background:#fff;color:var(--c-primary-dark,#1e3a5f);font-weight:700;padding:8px 18px;border-radius:999px;min-height:40px;touch-action:manipulation}
+#updateBanner button:disabled{opacity:.6}
+
 /* Tablas */
 .table-wrap{overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--c-border);-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:500px}
@@ -7263,9 +7268,60 @@ if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('sw.js', { scope: './' }).then(function(reg){
       console.log('SW registered:', reg.scope);
+      setupUpdateFlow(reg);
     }).catch(function(err){
       console.log('SW registration failed:', err);
     });
+  });
+}
+
+/* ===== Aviso de nueva versión =====
+ * Cuando se publica una actualización, el SW nuevo se instala en segundo
+ * plano y queda en espera (waiting). Se muestra un banner con botón
+ * "Actualizar" que lo activa (SKIP_WAITING) y recarga una sola vez.
+ * Además se comprueba periódicamente si hay versión nueva para que el
+ * usuario no dependa de cerrar y reabrir la app. */
+let __swRefreshing = false;
+navigator.serviceWorker.addEventListener('controllerchange', function(){
+  if(__swRefreshing) return;
+  __swRefreshing = true;
+  window.location.reload();
+});
+function showUpdateBanner(worker){
+  if(document.getElementById('updateBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.setAttribute('role','alert');
+  banner.innerHTML =
+    '<span>Nueva versión disponible</span>' +
+    '<button id="updateBannerBtn" type="button">Actualizar</button>';
+  document.body.appendChild(banner);
+  document.getElementById('updateBannerBtn').addEventListener('click', function(){
+    this.disabled = true;
+    this.textContent = 'Actualizando…';
+    if(worker) worker.postMessage({ type: 'SKIP_WAITING' });
+    // Red de seguridad: si en 4s el controllerchange no ha llegado
+    // (p.ej. primer SW sin controller previo), recargar directamente.
+    setTimeout(function(){ if(!__swRefreshing) window.location.reload(); }, 4000);
+  });
+}
+function setupUpdateFlow(reg){
+  // SW ya en espera en el momento del registro
+  if(reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+  // SW que entra en espera más tarde
+  reg.addEventListener('updatefound', function(){
+    const nw = reg.installing;
+    if(!nw) return;
+    nw.addEventListener('statechange', function(){
+      if(nw.state === 'installed' && navigator.serviceWorker.controller){
+        showUpdateBanner(nw);
+      }
+    });
+  });
+  // Comprobar si hay versión nueva: cada hora y al volver a la app
+  setInterval(function(){ try{ reg.update(); }catch(e){} }, 60*60*1000);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible'){ try{ reg.update(); }catch(e){} }
   });
 }
 
