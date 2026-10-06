@@ -3223,6 +3223,7 @@ window.editParte = (parteId) => {
   const atenuantesSel = p.atenuantes || [];
   const agravantesSel = p.agravantes || [];
   const respiroSel = p.aulaRespiro ? 'si' : 'no';
+  const tipo = p.tipo || (p.conductaId && String(p.conductaId).indexOf('CGPC') === 0 ? 'CGPC' : 'CCNC');
   const editadoPorOtro = p.profesorId !== currentUserUid;
   const body = `
     ${editadoPorOtro ? `<div class="form-hint" style="margin-bottom:10px">Estás editando un parte registrado por <strong>${escapeHtml(p.profesorNombre||'otro profesor')}</strong>.</div>` : ''}
@@ -3249,8 +3250,24 @@ window.editParte = (parteId) => {
     </div>
     <div class="form-group">
       <label>Conducta</label>
-      <div style="padding:11px;background:#f7f9fc;border-radius:8px;font-size:13px"><strong>${escapeHtml(p.conductaId)}</strong> — ${escapeHtml(ALL_CONDUCTAS[p.conductaId]?.texto||'')}</div>
-      <div class="form-hint">Para cambiar la conducta, elimina el parte y crea uno nuevo.</div>
+      ${isRealAdmin() ? `
+        <label style="font-size:13px;font-weight:600;margin-bottom:6px">Tipo de conducta</label>
+        <div class="radio-cards" style="margin-bottom:10px">
+          <label class="radio-card ${tipo==='CCNC'?'selected':''}" id="epTipoCCNC" onclick="epSelectTipo('CCNC')">
+            <input type="radio" name="epTipo" value="CCNC" ${tipo==='CCNC'?'checked':''}>
+            <span class="fw-600">Contraria (CCNC)</span>
+          </label>
+          <label class="radio-card ${tipo==='CGPC'?'selected':''}" id="epTipoCGPC" onclick="epSelectTipo('CGPC')">
+            <input type="radio" name="epTipo" value="CGPC" ${tipo==='CGPC'?'checked':''}>
+            <span class="fw-600">Gravemente perjudicial (CGPC)</span>
+          </label>
+        </div>
+        <label style="font-size:13px;font-weight:600;margin-bottom:6px">Conducta tipificada <span class="required">*</span></label>
+        <div id="epConductaList"></div>
+      ` : `
+        <div style="padding:11px;background:#f7f9fc;border-radius:8px;font-size:13px"><strong>${escapeHtml(p.conductaId)}</strong> — ${escapeHtml(ALL_CONDUCTAS[p.conductaId]?.texto||'')}</div>
+        <div class="form-hint">Para cambiar la conducta, contacta con el administrador.</div>
+      `}
     </div>
     <div class="form-group">
       <label>Descripción <span class="required">*</span></label>
@@ -3306,6 +3323,43 @@ window.editParte = (parteId) => {
   // Render atenuantes / agravantes / respiro AFTER modal is in the DOM
   epRenderMulti('epAtenuantesList', ATENUANTES, atenuantesSel, 'epAtenuante');
   epRenderMulti('epAgravantesList', AGRAVANTES, agravantesSel, 'epAgravante');
+  // Selector de conducta (solo admin): renderizar tras tener el modal en el DOM
+  if(isRealAdmin()) epRenderConductas(tipo, p.conductaId);
+};
+
+/* Conductas del formulario de edición (solo admin) */
+window.epRenderConductas = (tipo, conductaIdSel) => {
+  const c = $('epConductaList');
+  if(!c) return;
+  const list = tipo === 'CGPC' ? CONDUCTAS_CGPC : CONDUCTAS_CCNC;
+  c.innerHTML = list.map(cd => {
+    const sel = cd.id === conductaIdSel;
+    return `
+      <div class="conducta-option ${sel?'selected':''}" onclick="epSelectConducta(this,'${cd.id}')">
+        <input type="radio" name="epConducta" value="${cd.id}" id="ecd_${cd.id}" ${sel?'checked':''}>
+        <div style="flex:1">
+          <div class="codigo">${cd.id}</div>
+          <div class="texto">${escapeHtml(cd.texto)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+window.epSelectTipo = (t) => {
+  const card = $(t === 'CGPC' ? 'epTipoCGPC' : 'epTipoCCNC');
+  if(!card) return;
+  card.querySelector('input').checked = true;
+  $('epTipoCCNC').classList.toggle('selected', t === 'CCNC');
+  $('epTipoCGPC').classList.toggle('selected', t === 'CGPC');
+  // Al cambiar de tipo se deselecciona la conducta anterior
+  epRenderConductas(t, null);
+};
+window.epSelectConducta = (el, id) => {
+  const list = $('epConductaList');
+  if(!list) return;
+  list.querySelectorAll('.conducta-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
 };
 
 /* Edit-mode multi-selects (mirror of new-parte ones but with ep* ids) */
@@ -3396,6 +3450,18 @@ window.guardarEdicionParte = async (parteId) => {
     notificadoFamilia: notifFamilia, momentoNotifFamilia, medioNotifFamilia,
     updatedAt: serverTimestamp()
   };
+  // El admin puede cambiar también el tipo y la conducta tipificada
+  if(isRealAdmin() && $('epConductaList')){
+    const epTipoEl = document.querySelector('input[name="epTipo"]:checked');
+    const epConductaEl = document.querySelector('input[name="epConducta"]:checked');
+    if(!epConductaEl){ toast('Selecciona la conducta tipificada','error'); return; }
+    const nuevoTipo = epTipoEl ? epTipoEl.value : 'CCNC';
+    const nuevoConductaId = epConductaEl.value;
+    if(!ALL_CONDUCTAS[nuevoConductaId]){ toast('Conducta no válida','error'); return; }
+    updates.tipo = nuevoTipo;
+    updates.conductaId = nuevoConductaId;
+    updates.conductaTexto = ALL_CONDUCTAS[nuevoConductaId].texto;
+  }
   try{
     await update(ref(db, `${DB_ROOT}/partes/${parteId}`), updates);
     toast('Cambios guardados','success');
