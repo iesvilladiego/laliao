@@ -7138,7 +7138,7 @@ if('serviceWorker' in navigator){
 
 /* Chip de versión: se lee del CACHE_NAME del propio sw.js (única fuente de verdad) */
 fetch('sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(src => {
-  const m = src && src.match(/CACHE_NAME\s*=\s*'laliao-v2-v(\d+)'/);
+  const m = src && src.match(/CACHE_NAME\s*=\s*'laliao-v2[.-]v?(\d+)'/);
   if(!m) return;
   document.querySelectorAll('#appVersionChip, #appVersionChipM').forEach(el => {
     el.textContent = 'v' + m[1];
