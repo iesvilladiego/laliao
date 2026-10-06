@@ -416,6 +416,14 @@ details.acc-card>.acc-body{padding:0 18px 18px}
   .modal-close{width:36px;height:36px}
   .alumno-actions{gap:8px}
   .alumno-actions .btn-sm{min-width:40px;min-height:40px}
+  /* Controles pequeños de los informes: objetivo táctil mínimo ~40px */
+  .res-quitar{min-height:36px;padding:8px 14px}
+  .tab{min-height:40px;padding:9px 15px}
+  .chip-alumno{min-height:40px;padding:8px 14px}
+  .alumno-btn{min-height:42px;padding:9px 15px}
+  .btn-stat{min-height:44px}
+  .group-chip{min-height:40px;padding:8px 14px}
+  .pw-eye{width:40px;height:40px}
   /* Prevenir selección de texto accidental al tocar */
   .bottom-nav,.app-header,.toolbar{user-select:none;-webkit-user-select:none}
   /* Prevenir pull-to-refresh dentro de la app */
@@ -503,7 +511,15 @@ details.acc-card>.acc-body{padding:0 18px 18px}
 .checkbox-row input{width:20px;height:20px;cursor:pointer;-webkit-appearance:none;appearance:none;border:2px solid var(--c-border);border-radius:5px;background:#fff;transition:all .15s;flex-shrink:0}
 .checkbox-row input:checked{background:var(--c-primary);border-color:var(--c-primary)}
 .checkbox-row input:checked::after{content:'✓';color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;height:100%}
+/* Radios dentro de checkbox-row (tipo de conducta CCNC/CGPC): círculo con
+   punto en vez de cuadrado con ✓, para que no se confundan con checkboxes */
+.checkbox-row input[type="radio"]{border-radius:50%}
+.checkbox-row input[type="radio"]:checked::after{content:'';width:8px;height:8px;margin:2px auto;border-radius:50%;background:#fff;display:block}
 .checkbox-row label{cursor:pointer;font-size:14px;flex:1}
+/* Texto de la fila de checkbox: se usa span en vez de label anidado dentro
+   del label.checkbox-row (HTML inválido: en algunos navegadores móviles la
+   doble activación hacía que el checkbox se marcara y desmarcara a la vez) */
+.checkbox-row .ck-text{cursor:pointer;font-size:14px;flex:1}
 
 /* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,30,60,.55);display:none;align-items:flex-end;justify-content:center;padding:0;z-index:1000;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
@@ -668,11 +684,27 @@ tbody tr:hover{background:#fafbfc}
 .tag-respiro{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
 
 /* Radio cards (Sí/No) */
-.radio-cards{display:flex;gap:8px}
-.radio-card{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--c-border);border-radius:10px;cursor:pointer;transition:all .15s}
+.radio-cards{display:flex;gap:8px;flex-wrap:wrap}
+.radio-card{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--c-border);border-radius:10px;cursor:pointer;transition:all .15s;min-width:140px}
 .radio-card:hover{border-color:var(--c-primary-light);background:#f7f9fc}
 .radio-card.selected{border-color:var(--c-primary);background:#f0f6fc}
 .radio-card input{margin:0}
+/* Inputs dentro de tarjetas/opciones seleccionables: el bloque específico
+   de iOS pone appearance:none a TODOS los radios y checkboxes; sin estas
+   reglas quedan invisibles (0px) y parece que "no se puede tocar". */
+.conducta-option input,.multi-option input,.radio-card input{
+  width:20px;height:20px;margin:0;flex-shrink:0;cursor:pointer;
+  -webkit-appearance:none;appearance:none;border:2px solid var(--c-border);
+  background:#fff;transition:all .15s;
+}
+.conducta-option input,.radio-card input{border-radius:50%}
+.multi-option input{border-radius:5px}
+.conducta-option input:checked,.multi-option input:checked,.radio-card input:checked{border-color:var(--c-primary);background:var(--c-primary)}
+.conducta-option input:checked::after,.radio-card input:checked::after{content:'';display:block;width:8px;height:8px;margin:2px auto;border-radius:50%;background:#fff}
+.multi-option input:checked::after{content:'✓';color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;height:100%}
+/* Los pares de opciones lado a lado (tipo de conducta, Aula Respiro)
+   envuelven en pantallas estrechas en vez de desbordarse */
+.form-group .flex.gap-8{flex-wrap:wrap}
 
 /* Import preview */
 .import-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0}
@@ -794,7 +826,7 @@ tbody tr:hover{background:#fafbfc}
     <div class="app-header-title">
       <div class="app-header-logo">C</div>
       <span id="headerTitle">Inicio</span>
-      <span class="chip" id="appVersionChipM" style="display:none;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:#fff;color:var(--c-primary)"></span>
+      <span class="chip" id="appVersionChipM" style="display:none;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:#fff;color:var(--c-primary);border:1px solid rgba(255,255,255,.7);flex-shrink:0"></span>
     </div>
     <div class="app-header-actions">
       <button class="icon-btn" onclick="navigate('notifications')" title="Notificaciones">
@@ -812,7 +844,7 @@ tbody tr:hover{background:#fafbfc}
     <div class="sidebar-logo">
       <div class="app-header-logo">C</div>
       <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-        <span style="display:flex;align-items:center;gap:6px">LaLiao <span class="chip" id="appVersionChip" style="display:none;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;background:#fff;color:var(--c-primary)"></span></span>
+        <span style="display:flex;align-items:center;gap:6px">LaLiao <span class="chip" id="appVersionChip" style="display:none;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:#fff;color:var(--c-primary);border:1px solid rgba(255,255,255,.7);flex-shrink:0"></span></span>
         <small style="font-weight:400;font-size:11px;opacity:.7">IES Virgen de Villadiego</small>
       </span>
     </div>
@@ -1106,6 +1138,8 @@ let cachedStudents = [];      // local cache for selects
 let cachedUsers = {};
 let cachedPartes = [];
 let lastPartesSig = null;    // firma de los partes cargados: evita re-renders innecesarios
+let lastStudentsSig = null;  // firma del alumnado cargado: evita re-renders innecesarios
+let lastCursoActivoSig = null; // último curso activo visto: evita re-renders innecesarios
 let cachedNotifications = [];
 let cachedUbicaciones = [];   // lista de ubicaciones configurada por el admin
 let cachedDiasNoLectivos = {};  // calendario escolar: { 'YYYY-MM-DD': {categorias, detalle} }
@@ -1562,7 +1596,14 @@ function startListeners(){
       }
     });
     if(enriquecidos > 0) lastPartesSig = null; // fuerza un repintado coherente
-    if(['nuevoParte','alumnado','dashboard','informes'].includes(currentView)) renderCurrentView();
+    // Solo repintar si el listado de alumnado cambió de verdad: onValue
+    // también se re-dispara al reconectar y un repintado innecesario
+    // reseteaba scroll y foco de la vista en la que esté el usuario.
+    const studSig = arr.map(s => `${s.id}|${s.nombre||''}|${s.grupo||''}|${s.curso||''}`).join('~');
+    if(studSig !== lastStudentsSig){
+      lastStudentsSig = studSig;
+      if(['nuevoParte','alumnado','dashboard','informes'].includes(currentView)) renderCurrentView();
+    }
   });
   unsubscribers.push(unsub1);
 
@@ -1624,7 +1665,12 @@ function startListeners(){
       // Si no hay curso activo definido en Firebase, usar el calculado por fecha
       cachedCursoActivo = getCurrentCursoByDate();
     }
-    if(['cursos','dashboard','alumnado','nuevoParte','informes'].includes(currentView)) renderCurrentView();
+    // Evitar repintados si el curso activo no cambió (onValue se re-dispara
+    // al reconectar y reseteaba scroll/foco de la vista actual).
+    if(cachedCursoActivo !== lastCursoActivoSig){
+      lastCursoActivoSig = cachedCursoActivo;
+      if(['cursos','dashboard','alumnado','nuevoParte','informes'].includes(currentView)) renderCurrentView();
+    }
     updateCursoIndicator();
   });
   unsubscribers.push(unsubCursoActivo);
@@ -2176,6 +2222,17 @@ function renderCurrentView(){
   if(currentView === 'informes'){
     snap = snapshotInformesSelects(c);
   }
+  // Preservar la posición de scroll y el foco al repintar la misma vista:
+  // los listeners en tiempo real de Firebase repintan la vista mientras el
+  // usuario está en ella (sobre todo Informes, que es larga), y reemplazar
+  // el innerHTML devolvía el scroll a la parte superior y perdía el foco.
+  // En iOS el contenedor que scrollea es #app (body position:fixed); en el
+  // resto, la ventana.
+  const appEl = $('app');
+  const winScrollY = window.scrollY || 0;
+  const appScrollY = appEl ? appEl.scrollTop : 0;
+  const focusedId = (document.activeElement && document.activeElement.id)
+    ? document.activeElement.id : '';
   c.innerHTML = '';
   switch(currentView){
     case 'dashboard': renderDashboard(c); break;
@@ -2195,6 +2252,16 @@ function renderCurrentView(){
   // sus resultados (el evento change reconstruye el panel de detalle).
   if(snap){
     restoreInformesSelects(snap);
+  }
+  // Devolver scroll y foco a donde estaban (sin desplazar la vista al
+  // enfocar; navigate() ya hace su propio scrollTo(0,0) al cambiar de vista).
+  if(appEl && appScrollY) appEl.scrollTop = appScrollY;
+  if(winScrollY) window.scrollTo(0, winScrollY);
+  if(focusedId){
+    const el = $(focusedId);
+    if(el && el !== document.activeElement){
+      try{ el.focus({ preventScroll: true }); }catch(e){ el.focus(); }
+    }
   }
 }
 /* Expose render functions for testing/debugging */
@@ -2452,12 +2519,12 @@ function renderNuevoParte(c){
       <div class="form-group">
         <label>Corrección (Aula Respiro) <span class="required">*</span></label>
         <div class="radio-cards">
-          <label class="radio-card" id="npRespiroNo" onclick="selectRespiro(false)">
-            <input type="radio" name="npRespiro" value="no" checked>
+          <label class="radio-card" id="npRespiroNo">
+            <input type="radio" name="npRespiro" value="no" checked onchange="selectRespiro(false)">
             <span class="fw-600">No</span>
           </label>
-          <label class="radio-card" id="npRespiroSi" onclick="selectRespiro(true)">
-            <input type="radio" name="npRespiro" value="si">
+          <label class="radio-card" id="npRespiroSi">
+            <input type="radio" name="npRespiro" value="si" onchange="selectRespiro(true)">
             <span class="fw-600">Sí</span>
           </label>
         </div>
@@ -2468,7 +2535,7 @@ function renderNuevoParte(c){
         <div class="fw-600 mb-8">Notificación a la familia</div>
         <label class="checkbox-row">
           <input type="checkbox" id="npNotifFamilia" onchange="document.getElementById('npMomentoNotifWrap').style.display=this.checked?'block':'none'">
-          <label for="npNotifFamilia">He notificado a la familia</label>
+          <span class="ck-text">He notificado a la familia</span>
         </label>
         <div id="npMomentoNotifWrap" style="display:none;margin-top:8px">
           <label class="form-hint" style="display:block;margin-bottom:4px">Momento de la notificación</label>
@@ -3179,7 +3246,7 @@ window.openParteDetail = (parteId) => {
     <div class="card" style="background:#fdf3d8;border-color:#b8860b;margin:12px 0;padding:14px">
       <label class="checkbox-row" style="margin:0">
         <input type="checkbox" id="chkVistoTutor" onchange="marcarVistoTutor('${p.id}')">
-        <label for="chkVistoTutor" style="font-weight:600;font-size:14px">He revisado este parte de incidencias</label>
+        <span class="ck-text" style="font-weight:600;font-size:14px">He revisado este parte de incidencias</span>
       </label>
       <div class="form-hint" style="margin-top:6px">Marca esta casilla para confirmar que has leído el parte. Hasta que no lo hagas, el aviso permanecerá activo en tus notificaciones.</div>
     </div>` : ''}
@@ -3253,12 +3320,12 @@ window.editParte = (parteId) => {
       ${isRealAdmin() ? `
         <label style="font-size:13px;font-weight:600;margin-bottom:6px">Tipo de conducta</label>
         <div class="radio-cards" style="margin-bottom:10px">
-          <label class="radio-card ${tipo==='CCNC'?'selected':''}" id="epTipoCCNC" onclick="epSelectTipo('CCNC')">
-            <input type="radio" name="epTipo" value="CCNC" ${tipo==='CCNC'?'checked':''}>
+          <label class="radio-card ${tipo==='CCNC'?'selected':''}" id="epTipoCCNC">
+            <input type="radio" name="epTipo" value="CCNC" ${tipo==='CCNC'?'checked':''} onchange="epSelectTipo('CCNC')">
             <span class="fw-600">Contraria (CCNC)</span>
           </label>
-          <label class="radio-card ${tipo==='CGPC'?'selected':''}" id="epTipoCGPC" onclick="epSelectTipo('CGPC')">
-            <input type="radio" name="epTipo" value="CGPC" ${tipo==='CGPC'?'checked':''}>
+          <label class="radio-card ${tipo==='CGPC'?'selected':''}" id="epTipoCGPC">
+            <input type="radio" name="epTipo" value="CGPC" ${tipo==='CGPC'?'checked':''} onchange="epSelectTipo('CGPC')">
             <span class="fw-600">Gravemente perjudicial (CGPC)</span>
           </label>
         </div>
@@ -3284,12 +3351,12 @@ window.editParte = (parteId) => {
     <div class="form-group">
       <label>Corrección (Aula Respiro)</label>
       <div class="radio-cards">
-        <label class="radio-card ${respiroSel==='no'?'selected':''}" id="epRespiroNo" onclick="epSelectRespiro(false)">
-          <input type="radio" name="epRespiro" value="no" ${respiroSel==='no'?'checked':''}>
+        <label class="radio-card ${respiroSel==='no'?'selected':''}" id="epRespiroNo">
+          <input type="radio" name="epRespiro" value="no" ${respiroSel==='no'?'checked':''} onchange="epSelectRespiro(false)">
           <span class="fw-600">No</span>
         </label>
-        <label class="radio-card ${respiroSel==='si'?'selected':''}" id="epRespiroSi" onclick="epSelectRespiro(true)">
-          <input type="radio" name="epRespiro" value="si" ${respiroSel==='si'?'checked':''}>
+        <label class="radio-card ${respiroSel==='si'?'selected':''}" id="epRespiroSi">
+          <input type="radio" name="epRespiro" value="si" ${respiroSel==='si'?'checked':''} onchange="epSelectRespiro(true)">
           <span class="fw-600">Sí</span>
         </label>
       </div>
@@ -3297,7 +3364,7 @@ window.editParte = (parteId) => {
     <div class="card" style="background:#f7f9fc;margin:8px 0;padding:12px">
       <label class="checkbox-row">
         <input type="checkbox" id="epNotifFamilia" ${p.notificadoFamilia?'checked':''} onchange="document.getElementById('epNotifFamWrap').style.display=this.checked?'block':'none'">
-        <label for="epNotifFamilia">Notificación a la familia</label>
+        <span class="ck-text">Notificación a la familia</span>
       </label>
       <div id="epNotifFamWrap" style="display:${p.notificadoFamilia?'block':'none'};margin-top:8px">
         <div class="form-row">
@@ -7205,7 +7272,10 @@ if('serviceWorker' in navigator){
 /* Chip de versión: se lee del CACHE_NAME del propio sw.js (única fuente de verdad).
  * Muestra el número completo, p.ej. 'v2.22' (o 'v2.22' si el CACHE_NAME usa
  * la nomenclatura antigua 'laliao-v2-v22'). */
-fetch('sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(src => {
+/* El query con la fecha evita que el propio Service Worker responda con
+ * su copia cacheada de sw.js (cache-first): así el chip muestra siempre
+ * la versión realmente desplegada, también en la PWA instalada. */
+fetch('sw.js?nocache=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(src => {
   const m = src && src.match(/CACHE_NAME\s*=\s*'laliao-(v2[.\-]v?\d+)'/);
   if(!m) return;
   const version = 'v' + m[1].replace(/^v/, '').replace(/[.\-]v?/, '.');
