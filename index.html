@@ -131,6 +131,18 @@ input[type="date"].form-control,input[type="time"].form-control{min-height:44px}
 .pw-wrap{position:relative}
 .pw-wrap .form-control{padding-right:46px}
 .pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:var(--c-text-muted);border-radius:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+
+/* ===== Calendario de días no lectivos (editor mensual) ===== */
+.dnl-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dnl-lbl{text-align:center;font-size:11px;font-weight:600;color:var(--c-text-muted);padding:4px 0;text-transform:uppercase}
+.dnl-day{border:1.5px solid transparent;background:#f7f9fc;border-radius:9px;cursor:pointer;font:inherit;font-size:14px;font-weight:500;color:var(--c-text);min-height:40px;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:all .15s}
+.dnl-day:hover:not(:disabled){border-color:var(--c-primary-light);background:#eef4fa}
+.dnl-day.dnl-off{background:var(--c-primary);color:#fff;font-weight:700}
+.dnl-day.dnl-off:hover{background:var(--c-primary-dark)}
+.dnl-day.dnl-weekend{background:transparent;color:var(--c-text-muted);cursor:default;font-size:13px}
+.dnl-dot{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-2px;margin-right:2px}
+.dnl-dot.dnl-off{background:var(--c-primary)}
+.dnl-dot.dnl-weekend{background:#e1e7ef;border:1px solid var(--c-border)}
 .pw-eye:hover{color:var(--c-primary)}
 .pw-eye:active{transform:translateY(-50%) scale(.94)}
 .pw-eye svg{width:19px;height:19px;pointer-events:none}
@@ -4646,7 +4658,13 @@ function renderConfiguracion(c){
           <button class="btn btn-secondary" onclick="vaciarDiasNoLectivos()">Vaciar calendario</button>
         </div>
         <div id="dnlResult" style="margin-top:12px"></div>
-        ${renderEditorDiasNoLectivos()}
+        <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--c-border)">
+          <button class="btn btn-primary" onclick="abrirEditorCalendario()">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Editar días en el calendario
+          </button>
+          <div class="form-hint" style="margin-top:8px">Hay <strong>${Object.keys(cachedDiasNoLectivos).length}</strong> días no lectivos almacenados. En el calendario, toca un día para marcarlo o desmarcarlo; toca un día ya marcado para editar su detalle o eliminarlo.</div>
+        </div>
       </div>
     </details>
 
@@ -4743,104 +4761,129 @@ window.vaciarDiasNoLectivos = async () => {
   }
 };
 
-/* ===== Editor de días no lectivos =====
- * Permite editar, añadir y eliminar días uno a uno una vez importados.
- * Cada cambio se guarda inmediatamente en Firebase; el listener en tiempo
- * real repinta la vista (renderCurrentView restaura el acordeón abierto). */
+/* ===== Editor de días no lectivos: calendario mensual =====
+ * En lugar de una lista larga, un calendario mes a mes: tocar un día libre
+ * lo marca como no lectivo; tocar un día ya marcado abre su editor
+ * (detalle, categorías, eliminar). Cada cambio se guarda inmediatamente en
+ * Firebase; el listener en tiempo real repinta la vista de fondo. */
+let dnlCal = { anio: new Date().getFullYear(), mes: new Date().getMonth() };
+const DNL_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
 function dnlCategoriasTexto(cats){
   return (Array.isArray(cats) ? cats : [])
     .map(c => typeof c === 'string' ? c : (c && (c.nombre || c.texto)) || '')
     .filter(Boolean).join(', ');
 }
-function renderEditorDiasNoLectivos(){
-  const fechas = Object.keys(cachedDiasNoLectivos).sort();
-  const filas = fechas.map(f => {
-    const d = cachedDiasNoLectivos[f] || {};
-    const detalle = typeof d.detalle === 'string' ? d.detalle : '';
-    const cats = dnlCategoriasTexto(d.categorias);
-    const fNbsp = f.replace(/'/g, "\\'");
-    return `
-      <div class="dnl-row" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--c-border);border-radius:8px;margin-bottom:6px;background:#fff;flex-wrap:wrap">
-        <input type="date" class="form-control" value="${f}" style="width:150px;flex-shrink:0;padding:6px 8px;font-size:13px" onchange="editarDiaNoLectivo('${fNbsp}','fecha',this.value)">
-        <input type="text" class="form-control" value="${escapeHtml(detalle)}" placeholder="Detalle (vacaciones, festivo local…)" style="flex:1;min-width:160px;padding:6px 10px;font-size:13px" onchange="editarDiaNoLectivo('${fNbsp}','detalle',this.value)">
-        <input type="text" class="form-control" value="${escapeHtml(cats)}" placeholder="Categorías (separadas por comas)" style="flex:1;min-width:180px;padding:6px 10px;font-size:12px;color:var(--c-text-soft)" onchange="editarDiaNoLectivo('${fNbsp}','categorias',this.value)">
-        <button class="btn btn-sm btn-ghost" onclick="eliminarDiaNoLectivo('${fNbsp}')" title="Eliminar este día" aria-label="Eliminar ${f}" style="color:var(--c-danger);padding:6px;width:36px;height:36px;flex-shrink:0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        </button>
-      </div>`;
-  }).join('');
-  return `
-    <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--c-border)">
-      <div class="fw-600" style="font-size:13.5px;margin-bottom:4px">Días no lectivos (${fechas.length})</div>
-      <div class="form-hint" style="margin-bottom:10px">Edita la fecha, el detalle o las categorías directamente; el cambio se guarda solo. El botón de la papelera elimina el día.</div>
-      ${fechas.length === 0
-        ? '<div class="form-hint" style="margin-bottom:10px">Todavía no hay días no lectivos importados. Importa el JSON o añade días a mano aquí abajo.</div>'
-        : filas}
-      <div style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px dashed var(--c-border);border-radius:8px;margin-top:8px;flex-wrap:wrap">
-        <input type="date" id="dnlNuevaFecha" class="form-control" style="width:150px;flex-shrink:0;padding:6px 8px;font-size:13px">
-        <input type="text" id="dnlNuevoDetalle" class="form-control" placeholder="Detalle (opcional)" style="flex:1;min-width:160px;padding:6px 10px;font-size:13px">
-        <button class="btn btn-sm btn-primary" onclick="anadirDiaNoLectivo()" style="min-height:36px">
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir día
-        </button>
-      </div>
+function dnlFechaStr(anio, mes, dia){
+  return `${anio}-${String(mes + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+}
+window.abrirEditorCalendario = () => {
+  const hoy = new Date();
+  dnlCal = { anio: hoy.getFullYear(), mes: hoy.getMonth() };
+  const body = `<div id="dnlCalBody"></div>`;
+  const footer = `<button class="btn btn-secondary btn-sm" onclick="closeModal()">Cerrar</button>`;
+  openModal('Días no lectivos — calendario', body, footer, '');
+  renderDnlCalendario();
+};
+function renderDnlCalendario(){
+  const cont = $('dnlCalBody');
+  if(!cont) return;
+  const { anio, mes } = dnlCal;
+  const primerDow = (new Date(anio, mes, 1).getDay() + 6) % 7; // lunes=0
+  const diasMes = new Date(anio, mes + 1, 0).getDate();
+  let celdas = '';
+  for(let i = 0; i < primerDow; i++) celdas += '<div></div>';
+  for(let d = 1; d <= diasMes; d++){
+    const fecha = dnlFechaStr(anio, mes, d);
+    const dow = (new Date(anio, mes, d).getDay() + 6) % 7;
+    const finDeSemana = dow >= 5;
+    const noLectivo = !!cachedDiasNoLectivos[fecha];
+    const det = noLectivo && cachedDiasNoLectivos[fecha].detalle
+      ? ` title="${escapeHtml(fecha + ' — ' + cachedDiasNoLectivos[fecha].detalle)}"` : '';
+    celdas += `
+      <button type="button" class="dnl-day ${finDeSemana ? 'dnl-weekend' : ''} ${noLectivo ? 'dnl-off' : ''}"
+              ${finDeSemana ? 'disabled title="Fin de semana: siempre no lectivo"' : det}
+              onclick="dnlPulsarDia('${fecha}')">${d}</button>`;
+  }
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <button class="btn btn-sm btn-ghost" onclick="dnlNavegarMes(-1)" aria-label="Mes anterior" style="width:40px;height:40px;padding:0">‹</button>
+      <div class="fw-600" style="text-transform:capitalize;font-size:15px">${DNL_MESES[mes]} ${anio}</div>
+      <button class="btn btn-sm btn-ghost" onclick="dnlNavegarMes(1)" aria-label="Mes siguiente" style="width:40px;height:40px;padding:0">›</button>
+    </div>
+    <div class="dnl-grid">
+      ${['L','M','X','J','V','S','D'].map(l => `<div class="dnl-lbl">${l}</div>`).join('')}
+      ${celdas}
+    </div>
+    <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--c-text-soft);flex-wrap:wrap">
+      <span><span class="dnl-dot dnl-off"></span> No lectivo</span>
+      <span><span class="dnl-dot dnl-weekend"></span> Fin de semana (fijo)</span>
     </div>`;
 }
-window.editarDiaNoLectivo = async (fechaOriginal, campo, valor) => {
-  const actual = cachedDiasNoLectivos[fechaOriginal];
-  if(!actual){ toast('Ese día ya no existe en el calendario','error'); return; }
-  valor = (valor || '').trim();
-  if(campo === 'fecha'){
-    if(valor === fechaOriginal) return;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(valor)){ toast('Fecha no válida','error'); return; }
-    if(cachedDiasNoLectivos[valor]){ toast(`El ${valor} ya está en el calendario`,'error'); return; }
-    // Mover el día: misma información bajo la nueva fecha
-    try{
-      await update(ref(db, `${DB_ROOT}/config/diasNoLectivos`), {
-        [valor]: actual,
-        [fechaOriginal]: null
-      });
-      toast(`Día movido a ${valor}`,'success');
-    }catch(e){ toast('Error al mover el día: ' + e.message,'error'); }
-    return;
-  }
-  if(campo === 'detalle'){
-    if(valor === (actual.detalle || '')) return;
-    try{
-      await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fechaOriginal}/detalle`), valor);
-      toast('Detalle actualizado','success');
-    }catch(e){ toast('Error: ' + e.message,'error'); }
-    return;
-  }
-  if(campo === 'categorias'){
-    const cats = valor.split(',').map(s => s.trim()).filter(Boolean);
-    const previas = dnlCategoriasTexto(actual.categorias);
-    if(valor === previas) return;
-    try{
-      await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fechaOriginal}/categorias`), cats);
-      toast('Categorías actualizadas','success');
-    }catch(e){ toast('Error: ' + e.message,'error'); }
+window.dnlNavegarMes = (delta) => {
+  let { anio, mes } = dnlCal;
+  mes += delta;
+  if(mes < 0){ mes = 11; anio--; }
+  if(mes > 11){ mes = 0; anio++; }
+  dnlCal = { anio, mes };
+  renderDnlCalendario();
+};
+window.dnlPulsarDia = (fecha) => {
+  if(cachedDiasNoLectivos[fecha]){
+    dnlAbrirEditorDia(fecha);
+  } else {
+    dnlMarcarDia(fecha);
   }
 };
-window.eliminarDiaNoLectivo = async (fecha) => {
-  if(!cachedDiasNoLectivos[fecha]) return;
-  if(!confirm(`¿Eliminar el día no lectivo ${fecha} del calendario escolar? Ese día volverá a ser lectivo (salvo que sea sábado, domingo o esté duplicado).`)) return;
+window.dnlMarcarDia = async (fecha) => {
   try{
-    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), null);
-    toast(`Día ${fecha} eliminado`,'success');
+    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), { categorias: [], detalle: '' });
+    toast(`${fecha} marcado como día no lectivo`,'success');
+    renderDnlCalendario();
   }catch(e){
     toast('Error: ' + e.message,'error');
   }
 };
-window.anadirDiaNoLectivo = async () => {
-  const inpF = $('dnlNuevaFecha'); const inpD = $('dnlNuevoDetalle');
-  if(!inpF) return;
-  const fecha = (inpF.value || '').trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ toast('Selecciona una fecha válida','error'); return; }
-  if(cachedDiasNoLectivos[fecha]){ toast(`El ${fecha} ya está en el calendario. Edítalo directamente arriba.`,'error'); return; }
-  const detalle = (inpD && inpD.value ? inpD.value : '').trim();
+/* Editor de un día concreto (detalle, categorías, eliminar) */
+window.dnlAbrirEditorDia = (fecha) => {
+  const d = cachedDiasNoLectivos[fecha] || {};
+  const detalle = typeof d.detalle === 'string' ? d.detalle : '';
+  const cats = dnlCategoriasTexto(d.categorias);
+  const fechaSafe = fecha.replace(/'/g, "\\'");
+  const [y, m, dd] = fecha.split('-');
+  const fechaBonita = `${dd}/${m}/${y}`;
+  const body = `
+    <div class="form-group">
+      <label>Detalle</label>
+      <input type="text" id="dnlEditDetalle" class="form-control" value="${escapeHtml(detalle)}" placeholder="Vacaciones, festivo local…" style="font-size:16px">
+    </div>
+    <div class="form-group">
+      <label>Categorías (separadas por comas)</label>
+      <input type="text" id="dnlEditCategorias" class="form-control" value="${escapeHtml(cats)}" placeholder="Vacaciones de Navidad, Festivo local…" style="font-size:16px">
+    </div>`;
+  const footer = `
+    <button class="btn btn-danger btn-sm" onclick="dnlQuitarDia('${fechaSafe}')">Quitar día</button>
+    <button class="btn btn-primary btn-sm" onclick="dnlGuardarDia('${fechaSafe}')">Guardar</button>`;
+  openModal(`${fechaBonita} — día no lectivo`, body, footer);
+};
+window.dnlGuardarDia = async (fecha) => {
+  const detalle = ($('dnlEditDetalle')?.value || '').trim();
+  const cats = ($('dnlEditCategorias')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
   try{
-    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), { categorias: [], detalle });
-    toast(`Día no lectivo ${fecha} añadido`,'success');
+    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), { categorias: cats, detalle });
+    toast('Día actualizado','success');
+    closeModal();
+    renderDnlCalendario();
+  }catch(e){
+    toast('Error: ' + e.message,'error');
+  }
+};
+window.dnlQuitarDia = async (fecha) => {
+  try{
+    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), null);
+    toast(`Día ${fecha} eliminado: vuelve a ser lectivo`,'success');
+    closeModal();
+    renderDnlCalendario();
   }catch(e){
     toast('Error: ' + e.message,'error');
   }
