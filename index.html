@@ -97,7 +97,7 @@ a{color:var(--c-primary);text-decoration:none}
   padding:32px 24px;
   max-width:400px;width:100%;
   box-shadow:var(--shadow-lg);
-  max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .login-logo{
   width:72px;height:72px;border-radius:18px;
@@ -109,6 +109,8 @@ a{color:var(--c-primary);text-decoration:none}
   line-height:1;
 }
 .login-logo svg{width:44px;height:44px}
+/* Mono see-no-evil (SVG propio): idéntico en todas las plataformas */
+.login-logo svg{width:52px;height:52px}
 .login-title{text-align:center;font-size:20px;font-weight:600;color:var(--c-primary);margin-bottom:4px}
 .login-subtitle{text-align:center;font-size:13px;color:var(--c-text-muted);margin-bottom:24px}
 .form-group{margin-bottom:14px}
@@ -410,7 +412,10 @@ details.acc-card>.acc-body{padding:0 18px 18px}
   .bottom-nav{padding-bottom:env(safe-area-inset-bottom, 0px)}
   /* iOS: prevenir scroll bounce en el body */
   html,body{position:fixed;width:100%;height:100%;overflow:hidden}
-  #app{overflow-y:auto;-webkit-overflow-scrolling:touch;height:100vh}
+  /* 100vh en iOS Safari incluye el área de las barras de herramientas:
+     con las barras visibles el fondo de la app quedaba tapado. 100dvh
+     (segunda declaración, soportada iOS 15.4+) usa la altura visible. */
+  #app{overflow-y:auto;-webkit-overflow-scrolling:touch;height:100vh;height:100dvh}
   .app-main{overflow-y:visible}
   /* iOS: los inputs no deben tener border-radius nativo */
   input,select,textarea{border-radius:var(--radius-md)}
@@ -511,6 +516,19 @@ details.acc-card>.acc-body{padding:0 18px 18px}
 }
 /* Accesibilidad: respetar la preferencia de menos animaciones */
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Pantallas táctiles: los :hover de escritorio quedan "pegados" tras un
+   toque (Chrome/Android mantiene el estado hover hasta tocar fuera),
+   haciendo creer que una opción está seleccionada cuando no lo está.
+   Solo se neutralizan en tarjetas con estado; en botones el hover puntual
+   es inofensivo (y quitarlo les quitaría el fondo al pulsar). */
+@media(hover:none){
+  .conducta-option:not(.selected):hover,.multi-option:not(.selected):hover,
+  .radio-card:not(.selected):hover,.notif-item:not(.unread):hover,tbody tr:hover{background:inherit;border-color:var(--c-border)}
+  .multi-option.is-no-hay:hover{background:#fbf3cd;border-color:#e8c956}
+  .group-chip:not(.active):hover{background:#eef1f5;border-color:transparent}
+  .group-chip.all:not(.active):hover{background:#fff;border-color:var(--c-border)}
+}
 
 /* ===== Print (para PDFs) ===== */
 @media print{
@@ -751,33 +769,40 @@ tbody tr:hover{background:#fafbfc}
 <!-- Login Screen -->
 <div id="loginScreen" class="hidden">
   <div class="login-card">
-    <div class="login-logo" aria-label="Mono see-no-evil">
-      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Cabeza del mono -->
-        <ellipse cx="32" cy="34" rx="22" ry="20" fill="#8B5A3C"/>
-        <!-- Cara interior (más clara) -->
-        <ellipse cx="32" cy="38" rx="16" ry="14" fill="#D4A373"/>
-        <!-- Orejas -->
-        <circle cx="11" cy="28" r="6" fill="#8B5A3C"/>
-        <circle cx="53" cy="28" r="6" fill="#8B5A3C"/>
-        <circle cx="11" cy="28" r="3" fill="#D4A373"/>
-        <circle cx="53" cy="28" r="3" fill="#D4A373"/>
-        <!-- Ojos (tapados por las manos) -->
-        <ellipse cx="24" cy="34" rx="3.5" ry="4" fill="#fff"/>
-        <ellipse cx="40" cy="34" rx="3.5" ry="4" fill="#fff"/>
-        <circle cx="24" cy="34" r="1.8" fill="#1f2933"/>
-        <circle cx="40" cy="34" r="1.8" fill="#1f2933"/>
-        <!-- Cejas -->
-        <path d="M19 28 Q24 26 29 28" stroke="#5C3A1E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        <path d="M35 28 Q40 26 45 28" stroke="#5C3A1E" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        <!-- Boca (sonrisa pequeña) -->
-        <path d="M27 46 Q32 50 37 46" stroke="#5C3A1E" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-        <!-- Manos tapando los ojos -->
-        <ellipse cx="24" cy="33" rx="7" ry="6" fill="#8B5A3C" transform="rotate(-15 24 33)"/>
-        <ellipse cx="40" cy="33" rx="7" ry="6" fill="#8B5A3C" transform="rotate(15 40 33)"/>
-        <!-- Detalle de los dedos en las manos -->
-        <path d="M19 31 Q21 29 23 30" stroke="#5C3A1E" stroke-width="0.8" fill="none" opacity="0.5"/>
-        <path d="M45 31 Q43 29 41 30" stroke="#5C3A1E" stroke-width="0.8" fill="none" opacity="0.5"/>
+    <div class="login-logo" aria-label="Mono que se tapa los ojos (see-no-evil)">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
+        <!-- Orejas (detrás de la cabeza) -->
+        <circle cx="10" cy="30" r="7" fill="#8B5A3C"/>
+        <circle cx="54" cy="30" r="7" fill="#8B5A3C"/>
+        <circle cx="10" cy="30" r="3.5" fill="#D4A373"/>
+        <circle cx="54" cy="30" r="3.5" fill="#D4A373"/>
+        <!-- Cabeza -->
+        <ellipse cx="32" cy="33" rx="21" ry="19" fill="#8B5A3C"/>
+        <!-- Cara interior -->
+        <ellipse cx="32" cy="36" rx="15" ry="13.5" fill="#D4A373"/>
+        <!-- Brazos: arrancan por debajo de la cabeza y suben hasta las manos -->
+        <path d="M7 57 Q11 44 21 35.5" stroke="#8B5A3C" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M57 57 Q53 44 43 35.5" stroke="#8B5A3C" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <!-- Manos del extremo del brazo (rematan el trazado) -->
+        <circle cx="7.5" cy="56.5" r="4" fill="#8B5A3C"/>
+        <circle cx="56.5" cy="56.5" r="4" fill="#8B5A3C"/>
+        <!-- Boca: sonrisa amplia -->
+        <path d="M26 47 Q32 52 38 47" stroke="#5C3A1E" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <!-- Manos tapando los OJOS por completo (sin ojos visibles) -->
+        <g>
+          <ellipse cx="21.5" cy="31.5" rx="7.8" ry="7.2" fill="#A9714B" transform="rotate(-14 21.5 31.5)"/>
+          <ellipse cx="42.5" cy="31.5" rx="7.8" ry="7.2" fill="#A9714B" transform="rotate(14 42.5 31.5)"/>
+          <!-- Dedos de cada mano -->
+          <path d="M15.8 27.5 Q17.4 25.6 19.4 26.7" stroke="#5C3A1E" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M19 25.6 Q21 23.7 22.9 25.1" stroke="#5C3A1E" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M23.2 25.2 Q25.2 24 26.8 25.5" stroke="#5C3A1E" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M48.2 27.5 Q46.6 25.6 44.6 26.7" stroke="#5C3A1E" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M45 25.6 Q43 23.7 41.1 25.1" stroke="#5C3A1E" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M40.8 25.2 Q38.8 24 37.2 25.5" stroke="#5C3A1E" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        </g>
+        <!-- Nariz (bajo las manos, sobre la boca) -->
+        <ellipse cx="32" cy="41.5" rx="2.3" ry="1.7" fill="#C08A5A"/>
+        <path d="M30.9 42 Q32 43 33.1 42" stroke="#5C3A1E" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.6"/>
       </svg>
     </div>
     <div class="login-title">Laliao V2</div>
@@ -1044,7 +1069,12 @@ const getCurrentCursoByDate = () => {
  * - Si no (partes anteriores a ese campo), se infiere de la fecha del incidente.
  * - Sin fecha ni curso, se asume el curso de partida (CURSO_INICIAL). */
 const parteCursoEscolar = (p) => {
-  if(p && p.cursoEscolar) return p.cursoEscolar;
+  // Validar el formato del curso almacenado: un valor no estándar (p.ej.
+  // "2025/2026" introducido a mano en la BD) haría el parte invisible en
+  // todas las vistas; en ese caso se infiere de la fecha del incidente.
+  if(p && typeof p.cursoEscolar === 'string' && /^\d{4}-\d{4}$/.test(p.cursoEscolar.trim())){
+    return p.cursoEscolar.trim();
+  }
   const ts = fechaIncidenteTs(p);
   if(ts !== null){
     const d = new Date(ts);
@@ -1199,7 +1229,12 @@ const fmtTiempoRelativo = (ts) => {
   if(diff < 604800) return `hace ${Math.floor(diff/86400)} días`;
   return fmtFecha(ts);
 };
-const todayStr = () => new Date().toISOString().split('T')[0];
+/* Fecha local en formato YYYY-MM-DD. No usar toISOString(): devuelve la
+ * fecha UTC y en horario español (UTC+1/+2) da el día ANTERIOR entre las
+ * 00:00 y las 01:59 locales, corrompiendo la fecha por defecto de los
+ * partes y la fecha mostrada al editar incidencias de madrugada. */
+const fechaLocalStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayStr = () => fechaLocalStr(new Date());
 
 /* Acordeones exclusivos: dentro de cada grupo (data-acc-group), solo un
  * <details> puede estar desplegado a la vez. El evento toggle no burbujea,
@@ -1286,6 +1321,7 @@ onAuthStateChanged(auth, async (user) => {
           await set(ref(db, `${DB_ROOT}/users/${user.uid}`), {
             username, nombre,
             role, roleApproved: isFirstUser,
+            pendiente: !isFirstUser,
             createdAt: serverTimestamp()
           });
           currentUser = { username, nombre, role, roleApproved: isFirstUser };
@@ -1366,6 +1402,21 @@ function cleanupListeners(){
  * - Tutor: muestra selector con opciones "Tutor" y "Profesor"
  * - Admin: muestra selector con opciones "Administrador", "Tutor" y "Profesor" */
 async function afterProfileLoaded(){
+  // Cuentas bloqueadas por el administrador: no pueden entrar.
+  if(currentUser.eliminado){
+    toast('Esta cuenta ha sido bloqueada por el administrador del centro. Contacta con él si crees que es un error.','error');
+    try{ await signOut(auth); }catch(_){}
+    return;
+  }
+  // Cuentas pendientes de aprobación (p.ej. perfil recreado tras una
+  // eliminación, o creado a mano en Firebase Console): sin acceso hasta
+  // que el administrador las apruebe. Solo se bloquea el false explícito:
+  // los perfiles antiguos sin el campo no deben quedarse fuera.
+  if(currentUser.roleApproved === false){
+    toast('Tu cuenta está pendiente de aprobación por el administrador del centro. No puedes entrar todavía.','error');
+    try{ await signOut(auth); }catch(_){}
+    return;
+  }
   const realRole = currentUser.role;
   // Construir la lista de roles disponibles según el rol real
   let availableRoles = [];
@@ -2325,9 +2376,14 @@ window.closeModal = () => {
   $('modalTitle').innerHTML = '';
   $('modalBody').innerHTML = '';
   $('modalFooter').innerHTML = '';
-  /* Restaurar el scroll del fondo cuando no queden modales abiertos */
-  window.__modalOpenCount = Math.max(0, (window.__modalOpenCount||0) - 1);
-  if(!window.__modalOpenCount) document.body.style.overflow = '';
+  /* Restaurar el scroll del fondo. Solo hay UN overlay de modal en la app:
+     abrir un modal encima de otro (p.ej. el editor de un día desde el
+     calendario) reutiliza el mismo overlay, así que el contador debe
+     resetearse al cerrar. Con el resto (-1) que había antes, cerrar un
+     modal anidado dejaba body con overflow:hidden y la página sin scroll
+     hasta el siguiente ciclo abrir/cerrar. */
+  window.__modalOpenCount = 0;
+  document.body.style.overflow = '';
 };
 
 /* Teclado virtual (Android/iOS): complementa interactive-widget=resizes-content.
@@ -2364,7 +2420,10 @@ function renderDashboard(c){
   let tutoriaPartes = [];
   const effTutoriaGrupo = getEffectiveTutoriaGrupo();
   if(isTutor && effTutoriaGrupo){
-    tutoriaPartes = cachedPartes.filter(p => p.grupo === effTutoriaGrupo && esParteDelCurso(p, cursoActivoActual()));
+    // Comparación normalizada (igual que baseRol más abajo): una igualdad
+    // exacta fallaba si el grupo del parte y el de la tutoría diferían en
+    // formato ("1ºA" vs "1º A")
+    tutoriaPartes = cachedPartes.filter(p => normalizeGrupo(p.grupo) === normalizeGrupo(effTutoriaGrupo) && esParteDelCurso(p, cursoActivoActual()));
   }
 
   // Aviso de datos "invisibles": partes archivados en un curso escolar
@@ -2474,6 +2533,10 @@ function renderParteCard(p){
 function renderNuevoParte(c){
   // Aislamiento por año: solo el alumnado del curso activo es seleccionable
   const alumnosAnyo = activeYearStudents();
+  // Copia para el filtro de alumnado (filterAlumnoSelect reconstruye las
+  // opciones a partir de ella: ocultar <option> con display:none no
+  // funciona en Safari/iOS)
+  window.__npAlumnosAll = alumnosAnyo;
   const grupos = [...new Set(alumnosAnyo.map(s=>s.grupo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   c.innerHTML = `
     <div class="page-title">Nuevo parte de incidencias</div>
@@ -2623,16 +2686,22 @@ window.filterAlumnoSelect = (grupo) => {
   const q = ($('npAlumnoSearch')?.value||'').toLowerCase();
   const select = $('npAlumno');
   if(!select) return;
-  let visible = 0;
-  Array.from(select.options).forEach(opt => {
-    if(!opt.value) return; // skip placeholder
-    const matchGrupo = !selectedGrupo || opt.dataset.grupo === selectedGrupo;
-    const matchNombre = !q || (opt.dataset.nombre||'').includes(q);
-    opt.style.display = (matchGrupo && matchNombre) ? '' : 'none';
-    if(matchGrupo && matchNombre) visible++;
+  // Reconstruir las opciones filtradas en vez de ocultar <option> con
+  // display:none: Safari/iOS no las oculta y el alumno seleccionado podía
+  // quedar invisible pero seleccionado. Si la selección previa queda fuera
+  // del filtro, se resetea.
+  const previo = select.value;
+  const filtrados = (window.__npAlumnosAll || []).filter(s => {
+    const matchGrupo = !selectedGrupo || s.grupo === selectedGrupo;
+    const matchNombre = !q || (s.nombre||'').toLowerCase().includes(q);
+    return matchGrupo && matchNombre;
   });
+  select.innerHTML = `<option value="">— Selecciona alumno/a —</option>` + filtrados.map(s => `
+          <option value="${s.id}" data-grupo="${escapeHtml(s.grupo||'')}" data-nombre="${escapeHtml((s.nombre||'').toLowerCase())}" ${s.id===previo?'selected':''}>${escapeHtml(s.nombre)} (${escapeHtml(s.grupo||'')})</option>`).join('');
+  if(previo && !filtrados.some(s => s.id === previo)) select.value = '';
   const countEl = $('npAlumnoCount');
-  if(countEl) countEl.textContent = `${visible} alumnos/as visibles`;
+  if(countEl) countEl.textContent = `${filtrados.length} alumnos/as visibles`;
+  actualizarPreviewUbicacion();
 };
 
 /* Preview dinámico de la ubicación cuando se selecciona "Aula de Grupo".
@@ -2849,9 +2918,13 @@ window.guardarParte = async () => {
     toast('Parte guardado correctamente','success');
     npFormDraft = null;  // limpiar borrador
 
-    // Notificar automáticamente al tutor del grupo del alumno
+    // Notificar automáticamente al tutor del grupo del alumno.
+    // Comparar con normalizeGrupo (como en el resto de la app): una
+    // igualdad exacta fallaba en silencio si el grupo del alumno y el de
+    // la tutoría diferían en formato ("1ºA" vs "1º A", mayúsculas…).
     const tutorEntry = Object.entries(cachedUsers).find(([uid, u]) =>
-      (u.role === 'tutor' || u.role === 'admin') && u.tutoriaGrupo === alumno.grupo
+      (u.role === 'tutor' || u.role === 'admin') &&
+      normalizeGrupo(u.tutoriaGrupo) === normalizeGrupo(alumno.grupo)
     );
     if(tutorEntry){
       const [tutorUid, tutorData] = tutorEntry;
@@ -3322,12 +3395,12 @@ window.editParte = (parteId) => {
   const p = cachedPartes.find(x => x.id === parteId);
   if(!p) return;
   const f = p.fechaIncidente?.toDate ? p.fechaIncidente.toDate() : new Date(p.fechaIncidente||Date.now());
-  const fechaStr = f.toISOString().split('T')[0];
+  const fechaStr = fechaLocalStr(f);
   const horaStr = p.horaIncidente || f.toTimeString().slice(0,5);
   let notifFamFecha = '', notifFamHora = '';
   if(p.momentoNotifFamilia){
     const nf = p.momentoNotifFamilia.toDate ? p.momentoNotifFamilia.toDate() : new Date(p.momentoNotifFamilia);
-    notifFamFecha = nf.toISOString().split('T')[0];
+    notifFamFecha = fechaLocalStr(nf);
     notifFamHora = nf.toTimeString().slice(0,5);
   }
   const atenuantesSel = p.atenuantes || [];
@@ -3527,6 +3600,11 @@ window.guardarEdicionParte = async (parteId) => {
   if(!esParteDelCursoActivo(p)){ toast('Los partes de cursos anteriores están archivados: no se pueden modificar.','error'); return; }
   const fecha = $('epFecha').value;
   const hora = $('epHora').value;
+  if(!fecha){ toast('Indica la fecha de la incidencia','error'); return; }
+  // Misma regla que al crear el parte: no se pueden imponer en días no lectivos
+  const motivoNoLectivo = motivoDiaNoLectivo(fecha);
+  if(motivoNoLectivo === 'fin de semana'){ toast('No se pueden imponer partes en sábado ni en domingo','error'); return; }
+  if(motivoNoLectivo === 'no lectivo'){ toast('No se pueden imponer partes en un día no lectivo (calendario escolar)','error'); return; }
   let ubicacion = $('epUbicacion').value.trim();
   // Resolver "Aula de Grupo" → "Aula <grupo del alumno del parte>"
   if(ubicacion.toLowerCase() === 'aula de grupo'){
@@ -4134,6 +4212,9 @@ window.confirmarImportExcel = async () => {
           updates[`${DB_ROOT}/students/${newRef.key}`] = {
             nombre, grupo, curso, fechaImport, createdAt: serverTimestamp()
           };
+          // Registrar en el mapa: si el mismo alumno se repite más adelante
+          // en el Excel, se actualiza esta ficha en vez de duplicarla
+          existingByNombreGrupo[key] = newRef.key;
           imported++;
         }
       }
@@ -4380,7 +4461,9 @@ window.importarUsuariosExcel = async () => {
       return '';
     };
 
-    const usuarios = rows.map(r => ({
+    const usuarios = rows.map((r, idx) => ({
+      // +2: fila 1 = cabecera; idx 0 = segunda fila de la hoja
+      fila: idx + 2,
       nombre: String(findCol(r, ['Nombre','Nombre y apellidos','nombre'])).trim(),
       username: String(findCol(r, ['Usuario','usuario','user'])).trim().toLowerCase(),
       pass: String(findCol(r, ['Contraseña','Password','contraseña','password'])).trim(),
@@ -4405,11 +4488,11 @@ window.importarUsuariosExcel = async () => {
     resultDiv.innerHTML = `<div style="padding:10px;color:var(--c-info)">Se encontraron ${usuarios.length} usuarios. Iniciando creación...</div>`;
 
     const errores = [];
-    usuarios.forEach((u, i) => {
-      if(!USERNAME_REGEX.test(u.username)) errores.push(`Fila ${i+1}: usuario "${u.username}" no válido`);
-      if(u.pass.length < 6) errores.push(`Fila ${i+1}: contraseña demasiado corta`);
-      if(u.rol && !['profesor','tutor','admin'].includes(u.rol)) errores.push(`Fila ${i+1}: rol "${u.rol}" no válido (usa: profesor, tutor o admin)`);
-      if(u.rol === 'tutor' && !u.tutoria) errores.push(`Fila ${i+1}: rol tutor sin grupo de tutoría`);
+    usuarios.forEach(u => {
+      if(!USERNAME_REGEX.test(u.username)) errores.push(`Fila ${u.fila}: usuario "${u.username}" no válido`);
+      if(u.pass.length < 6) errores.push(`Fila ${u.fila}: contraseña demasiado corta`);
+      if(u.rol && !['profesor','tutor','admin'].includes(u.rol)) errores.push(`Fila ${u.fila}: rol "${u.rol}" no válido (usa: profesor, tutor o admin)`);
+      if(u.rol === 'tutor' && !u.tutoria) errores.push(`Fila ${u.fila}: rol tutor sin grupo de tutoría`);
     });
     if(errores.length > 0){
       resultDiv.innerHTML = `<div style="padding:10px;color:var(--c-danger)"><strong>Errores:</strong><br>${errores.join('<br>')}</div>`;
@@ -4781,9 +4864,11 @@ function dnlCategoriasTexto(cats){
 function dnlFechaStr(anio, mes, dia){
   return `${anio}-${String(mes + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
 }
-window.abrirEditorCalendario = () => {
-  const hoy = new Date();
-  dnlCal = { anio: hoy.getFullYear(), mes: hoy.getMonth() };
+window.abrirEditorCalendario = (preservarMes) => {
+  if(!preservarMes){
+    const hoy = new Date();
+    dnlCal = { anio: hoy.getFullYear(), mes: hoy.getMonth() };
+  }
   const body = `<div id="dnlCalBody"></div>`;
   const footer = `<button class="btn btn-secondary btn-sm" onclick="closeModal()">Cerrar</button>`;
   openModal('Días no lectivos — calendario', body, footer, '');
@@ -4842,6 +4927,9 @@ window.dnlPulsarDia = (fecha) => {
 window.dnlMarcarDia = async (fecha) => {
   try{
     await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), { categorias: [], detalle: '' });
+    // Actualizar la caché local sin esperar al listener: evita que el
+    // calendario se repinte con el estado anterior a la escritura.
+    cachedDiasNoLectivos[fecha] = { categorias: [], detalle: '' };
     toast(`${fecha} marcado como día no lectivo`,'success');
     renderDnlCalendario();
   }catch(e){
@@ -4875,9 +4963,12 @@ window.dnlGuardarDia = async (fecha) => {
   const cats = ($('dnlEditCategorias')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
   try{
     await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), { categorias: cats, detalle });
+    cachedDiasNoLectivos[fecha] = { categorias: cats, detalle };
     toast('Día actualizado','success');
-    closeModal();
-    renderDnlCalendario();
+    // Volver al calendario conservando el mes en el que estábamos (el
+    // editor reutiliza el mismo overlay del modal: un closeModal aquí
+    // cerraría también el calendario)
+    abrirEditorCalendario(true);
   }catch(e){
     toast('Error: ' + e.message,'error');
   }
@@ -4885,9 +4976,9 @@ window.dnlGuardarDia = async (fecha) => {
 window.dnlQuitarDia = async (fecha) => {
   try{
     await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), null);
+    delete cachedDiasNoLectivos[fecha];
     toast(`Día ${fecha} eliminado: vuelve a ser lectivo`,'success');
-    closeModal();
-    renderDnlCalendario();
+    abrirEditorCalendario(true);
   }catch(e){
     toast('Error: ' + e.message,'error');
   }
@@ -5174,6 +5265,14 @@ window.editarCurso = async (cursoId) => {
     const nPartes = cachedPartes.filter(p => parteCursoEscolar(p) === cur.label).length;
     if(nPartes > 0){
       toast(`No se puede editar el curso ${cur.label}: tiene ${nPartes} parte(s) asociados y el histórico debe conservarse intacto.`,'error');
+      return;
+    }
+    // El alumnado también referencia el curso por su etiqueta: cambiar el
+    // año con alumnado importado dejaría el censo huérfano (los alumnos
+    // quedarían archivados en un curso que ya no existe).
+    const nAlumnos = cachedStudents.filter(s => s.curso === cur.label).length;
+    if(nAlumnos > 0){
+      toast(`No se puede editar el curso ${cur.label}: tiene ${nAlumnos} alumno/a(s) importados con ese curso. Elimínalos o expórtalos antes de cambiar el año.`,'error');
       return;
     }
     if(cur.label === CURSO_INICIAL || cur.esInicial){
