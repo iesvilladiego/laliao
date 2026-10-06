@@ -3086,7 +3086,7 @@ window.openParteDetail = (parteId) => {
     return;
   }
 
-  // Permissions: editar=solo propietario; eliminar=solo admin
+  // Permissions: editar=propietario o admin; eliminar=solo admin
   const isOwner = p.profesorId === currentUserUid;
   const realIsAdmin = isRealAdmin();
   const effRole = getEffectiveRole();
@@ -3094,7 +3094,7 @@ window.openParteDetail = (parteId) => {
   // Comparar grupos normalizados para evitar problemas de formato
   const isTutorOfGroup = effRole === 'tutor' && effTutoriaGrupo && p.grupo &&
     normalizeGrupo(effTutoriaGrupo) === normalizeGrupo(p.grupo);
-  const canEdit = isOwner;
+  const canEdit = isOwner || realIsAdmin;
   const canNotifyTutor = (isOwner || realIsAdmin) && !p.notificadoTutor;
   const canDelete = realIsAdmin;
 
@@ -3219,7 +3219,9 @@ window.editParte = (parteId) => {
   const atenuantesSel = p.atenuantes || [];
   const agravantesSel = p.agravantes || [];
   const respiroSel = p.aulaRespiro ? 'si' : 'no';
+  const editadoPorOtro = p.profesorId !== currentUserUid;
   const body = `
+    ${editadoPorOtro ? `<div class="form-hint" style="margin-bottom:10px">Estás editando un parte registrado por <strong>${escapeHtml(p.profesorNombre||'otro profesor')}</strong>.</div>` : ''}
     <div class="form-group">
       <label>Alumnado</label>
       <input type="text" class="form-control" value="${escapeHtml(p.alumnoNombre)} (${escapeHtml(p.grupo||'')})" disabled>
