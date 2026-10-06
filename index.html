@@ -2238,6 +2238,21 @@ function renderCurrentView(){
   const appScrollY = appEl ? appEl.scrollTop : 0;
   const focusedId = (document.activeElement && document.activeElement.id)
     ? document.activeElement.id : '';
+  // Recordar qué acordeones estaban abiertos para restaurarlos tras el
+  // repintado: sin esto, cada repintado por datos en tiempo real colapsaba
+  // el acordeón que el usuario estaba editando (p.ej. el calendario escolar
+  // en Configuración). Como identificador se usa el primer texto del summary
+  // (estable): el textoContent completo incluiría contadores tipo "5 días"
+  // que cambian al editar los datos y romperían la coincidencia.
+  const accIdent = (d) => {
+    const s = d.querySelector(':scope > summary');
+    if(!s) return '';
+    let txt = '';
+    s.childNodes.forEach(n => { if(n.nodeType === Node.TEXT_NODE) txt += n.textContent; });
+    return txt.trim();
+  };
+  const openAccordions = Array.from(c.querySelectorAll('details[open]'))
+    .map(accIdent).filter(Boolean);
   c.innerHTML = '';
   switch(currentView){
     case 'dashboard': renderDashboard(c); break;
@@ -2267,6 +2282,13 @@ function renderCurrentView(){
     if(el && el !== document.activeElement){
       try{ el.focus({ preventScroll: true }); }catch(e){ el.focus(); }
     }
+  }
+  // Restaurar los acordeones que estaban abiertos antes del repintado
+  if(openAccordions.length){
+    c.querySelectorAll('details[data-acc-group]').forEach(d => {
+      const t = accIdent(d);
+      if(t && openAccordions.includes(t) && !d.open) d.open = true;
+    });
   }
 }
 /* Expose render functions for testing/debugging */
@@ -4614,7 +4636,7 @@ function renderConfiguracion(c){
     <details class="acc-card" data-acc-group="configuracion" style="background:linear-gradient(135deg,#fdf3d8,#fef9e7);border-color:#e8a93c">
       <summary><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg> Calendario escolar <span class="chip" style="margin-left:6px">${Object.keys(cachedDiasNoLectivos).length} días no lectivos</span></summary>
       <div class="acc-body">
-        <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px;line-height:1.5">Importa los días no lectivos del centro (festivos, vacaciones…) a partir de un archivo JSON como <code>GestorPermisos_DiasNoLectivos.json</code>. En esos días, y en sábados y domingos, no se podrán imponer partes.</p>
+        <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px;line-height:1.5">Importa los días no lectivos del centro (festivos, vacaciones…) a partir de un archivo JSON como <code>GestorPermisos_DiasNoLectivos.json</code>. En esos días, y en sábados y domingos, no se podrán imponer partes. Los días importados también se pueden <strong>editar, añadir o eliminar uno a uno</strong> desde la lista inferior; los cambios se guardan al salir de cada campo.</p>
         <div class="form-group">
           <label>Archivo JSON de días no lectivos</label>
           <input type="file" id="dnlFile" accept=".json" class="form-control" style="padding:8px">
@@ -4624,6 +4646,7 @@ function renderConfiguracion(c){
           <button class="btn btn-secondary" onclick="vaciarDiasNoLectivos()">Vaciar calendario</button>
         </div>
         <div id="dnlResult" style="margin-top:12px"></div>
+        ${renderEditorDiasNoLectivos()}
       </div>
     </details>
 
@@ -4715,6 +4738,109 @@ window.vaciarDiasNoLectivos = async () => {
   try{
     await set(ref(db, `${DB_ROOT}/config/diasNoLectivos`), null);
     toast('Calendario escolar vaciado','success');
+  }catch(e){
+    toast('Error: ' + e.message,'error');
+  }
+};
+
+/* ===== Editor de días no lectivos =====
+ * Permite editar, añadir y eliminar días uno a uno una vez importados.
+ * Cada cambio se guarda inmediatamente en Firebase; el listener en tiempo
+ * real repinta la vista (renderCurrentView restaura el acordeón abierto). */
+function dnlCategoriasTexto(cats){
+  return (Array.isArray(cats) ? cats : [])
+    .map(c => typeof c === 'string' ? c : (c && (c.nombre || c.texto)) || '')
+    .filter(Boolean).join(', ');
+}
+function renderEditorDiasNoLectivos(){
+  const fechas = Object.keys(cachedDiasNoLectivos).sort();
+  const filas = fechas.map(f => {
+    const d = cachedDiasNoLectivos[f] || {};
+    const detalle = typeof d.detalle === 'string' ? d.detalle : '';
+    const cats = dnlCategoriasTexto(d.categorias);
+    const fNbsp = f.replace(/'/g, "\\'");
+    return `
+      <div class="dnl-row" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--c-border);border-radius:8px;margin-bottom:6px;background:#fff;flex-wrap:wrap">
+        <input type="date" class="form-control" value="${f}" style="width:150px;flex-shrink:0;padding:6px 8px;font-size:13px" onchange="editarDiaNoLectivo('${fNbsp}','fecha',this.value)">
+        <input type="text" class="form-control" value="${escapeHtml(detalle)}" placeholder="Detalle (vacaciones, festivo local…)" style="flex:1;min-width:160px;padding:6px 10px;font-size:13px" onchange="editarDiaNoLectivo('${fNbsp}','detalle',this.value)">
+        <input type="text" class="form-control" value="${escapeHtml(cats)}" placeholder="Categorías (separadas por comas)" style="flex:1;min-width:180px;padding:6px 10px;font-size:12px;color:var(--c-text-soft)" onchange="editarDiaNoLectivo('${fNbsp}','categorias',this.value)">
+        <button class="btn btn-sm btn-ghost" onclick="eliminarDiaNoLectivo('${fNbsp}')" title="Eliminar este día" aria-label="Eliminar ${f}" style="color:var(--c-danger);padding:6px;width:36px;height:36px;flex-shrink:0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>`;
+  }).join('');
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--c-border)">
+      <div class="fw-600" style="font-size:13.5px;margin-bottom:4px">Días no lectivos (${fechas.length})</div>
+      <div class="form-hint" style="margin-bottom:10px">Edita la fecha, el detalle o las categorías directamente; el cambio se guarda solo. El botón de la papelera elimina el día.</div>
+      ${fechas.length === 0
+        ? '<div class="form-hint" style="margin-bottom:10px">Todavía no hay días no lectivos importados. Importa el JSON o añade días a mano aquí abajo.</div>'
+        : filas}
+      <div style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px dashed var(--c-border);border-radius:8px;margin-top:8px;flex-wrap:wrap">
+        <input type="date" id="dnlNuevaFecha" class="form-control" style="width:150px;flex-shrink:0;padding:6px 8px;font-size:13px">
+        <input type="text" id="dnlNuevoDetalle" class="form-control" placeholder="Detalle (opcional)" style="flex:1;min-width:160px;padding:6px 10px;font-size:13px">
+        <button class="btn btn-sm btn-primary" onclick="anadirDiaNoLectivo()" style="min-height:36px">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir día
+        </button>
+      </div>
+    </div>`;
+}
+window.editarDiaNoLectivo = async (fechaOriginal, campo, valor) => {
+  const actual = cachedDiasNoLectivos[fechaOriginal];
+  if(!actual){ toast('Ese día ya no existe en el calendario','error'); return; }
+  valor = (valor || '').trim();
+  if(campo === 'fecha'){
+    if(valor === fechaOriginal) return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(valor)){ toast('Fecha no válida','error'); return; }
+    if(cachedDiasNoLectivos[valor]){ toast(`El ${valor} ya está en el calendario`,'error'); return; }
+    // Mover el día: misma información bajo la nueva fecha
+    try{
+      await update(ref(db, `${DB_ROOT}/config/diasNoLectivos`), {
+        [valor]: actual,
+        [fechaOriginal]: null
+      });
+      toast(`Día movido a ${valor}`,'success');
+    }catch(e){ toast('Error al mover el día: ' + e.message,'error'); }
+    return;
+  }
+  if(campo === 'detalle'){
+    if(valor === (actual.detalle || '')) return;
+    try{
+      await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fechaOriginal}/detalle`), valor);
+      toast('Detalle actualizado','success');
+    }catch(e){ toast('Error: ' + e.message,'error'); }
+    return;
+  }
+  if(campo === 'categorias'){
+    const cats = valor.split(',').map(s => s.trim()).filter(Boolean);
+    const previas = dnlCategoriasTexto(actual.categorias);
+    if(valor === previas) return;
+    try{
+      await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fechaOriginal}/categorias`), cats);
+      toast('Categorías actualizadas','success');
+    }catch(e){ toast('Error: ' + e.message,'error'); }
+  }
+};
+window.eliminarDiaNoLectivo = async (fecha) => {
+  if(!cachedDiasNoLectivos[fecha]) return;
+  if(!confirm(`¿Eliminar el día no lectivo ${fecha} del calendario escolar? Ese día volverá a ser lectivo (salvo que sea sábado, domingo o esté duplicado).`)) return;
+  try{
+    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), null);
+    toast(`Día ${fecha} eliminado`,'success');
+  }catch(e){
+    toast('Error: ' + e.message,'error');
+  }
+};
+window.anadirDiaNoLectivo = async () => {
+  const inpF = $('dnlNuevaFecha'); const inpD = $('dnlNuevoDetalle');
+  if(!inpF) return;
+  const fecha = (inpF.value || '').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ toast('Selecciona una fecha válida','error'); return; }
+  if(cachedDiasNoLectivos[fecha]){ toast(`El ${fecha} ya está en el calendario. Edítalo directamente arriba.`,'error'); return; }
+  const detalle = (inpD && inpD.value ? inpD.value : '').trim();
+  try{
+    await set(ref(db, `${DB_ROOT}/config/diasNoLectivos/${fecha}`), { categorias: [], detalle });
+    toast(`Día no lectivo ${fecha} añadido`,'success');
   }catch(e){
     toast('Error: ' + e.message,'error');
   }
