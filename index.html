@@ -428,6 +428,10 @@ details.acc-card>.acc-body{padding:0 18px 18px}
   .modal-close{width:36px;height:36px}
   .alumno-actions{gap:8px}
   .alumno-actions .btn-sm{min-width:40px;min-height:40px}
+  /* Evitar el auto-zoom de iOS Safari: al enfocar cualquier input con
+     font-size <16px, el navegador agranda la página y luego "no se puede
+     hacer scroll" ni ver lo que se edita. Forzamos 16px en táctil. */
+  input,select,textarea{font-size:16px !important}
   /* Controles pequeños de los informes: objetivo táctil mínimo ~40px */
   .res-quitar{min-height:36px;padding:8px 14px}
   .tab{min-height:40px;padding:9px 15px}
@@ -4673,7 +4677,7 @@ function renderConfiguracion(c){
       <div class="acc-body">
       <p style="font-size:13px;color:var(--c-text-soft);margin-bottom:14px;line-height:1.5">Estas son las ubicaciones que aparecerán como sugerencias al rellenar el campo "Ubicación de los hechos" en un parte. El profesorado podrá elegir una de la lista o escribir una propia. Los cambios se sincronizan en tiempo real con todos los dispositivos.</p>
 
-      <div id="ubicacionesEditor">
+      <div id="ubicacionesEditor" style="max-height:min(420px,55dvh);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px;border-radius:8px">
         ${ubicaciones.map((u, i) => `
           <div class="ubicacion-row" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--c-border);border-radius:8px;margin-bottom:6px;background:#fff">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-muted)" stroke-width="2" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
